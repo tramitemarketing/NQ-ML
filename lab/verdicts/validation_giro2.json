@@ -1,0 +1,127 @@
+[
+ {
+  "id": "r2_range_pcband_breakout",
+  "family": "r2_range",
+  "kind": "tradeable",
+  "phase": "validation",
+  "k": 5,
+  "alpha": 0.01,
+  "n": 354,
+  "stat": {
+   "n": 354,
+   "n_days": 354,
+   "mean": 12.062266948154836,
+   "lo": 4.725828696410854,
+   "hi": 19.38489489050571,
+   "p_two": 0.0022,
+   "p_pos": 0.0013
+  },
+  "stat_beta_adj": {
+   "n": 354,
+   "n_days": 354,
+   "mean": 11.842835863333363,
+   "lo": 4.499945134656963,
+   "hi": 19.182189371010466,
+   "p_two": 0.0029,
+   "p_pos": 0.0018
+  },
+  "years": {
+   "2019": 4.382,
+   "2020": 3.791,
+   "2021": 4.096,
+   "2022": 26.328,
+   "2023": 20.022
+  },
+  "years_pos": 5,
+  "drop_top20": 0.8219835318766822,
+  "gross_mean": 12.812266948154836,
+  "crit": {
+   "c1_p": true,
+   "c2_beta": true,
+   "c3_years": true,
+   "c4_droptop": true
+  },
+  "usd_per_trade": 241.2453389630967,
+  "verdict": "PASS"
+ },
+ {
+  "id": "r2_range_pcband_breakout_R",
+  "family": "r2_range",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 5,
+  "alpha": 0.01,
+  "n": 354,
+  "stat": {
+   "n": 354,
+   "n_days": 354,
+   "mean": 0.06143238627407417,
+   "lo": 0.027227620414484177,
+   "hi": 0.09654390818154307,
+   "p_two": 0.0006,
+   "p_pos": 0.0005
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "r2_costaware_mom20_restofday",
+  "family": "r2_costaware",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 5,
+  "alpha": 0.01,
+  "n": 1184,
+  "stat": {
+   "n": 1184,
+   "n_days": 1184,
+   "mean": 0.024367496099817566,
+   "lo": -0.02622720073893387,
+   "hi": 0.07512082305759056,
+   "p_two": 0.3488,
+   "p_pos": 0.1755
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "r2_footprints_slice_continuation",
+  "family": "r2_footprints",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 5,
+  "alpha": 0.01,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.023705887859215576,
+   "lo": 0.009498614062515282,
+   "hi": 0.03779835378010257,
+   "p_two": 0.0014,
+   "p_pos": 0.0007
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "r2_footprints_close_clock_continuation",
+  "family": "r2_footprints",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 5,
+  "alpha": 0.01,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.17747894363760663,
+   "lo": 0.03930118875305824,
+   "hi": 0.31866571776853947,
+   "p_two": 0.0136,
+   "p_pos": 0.0074
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ }
+]

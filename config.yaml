@@ -1,0 +1,109 @@
+data:
+  dataset: GLBX.MDP3
+  symbol: NQ.v.0
+  stype_in: continuous
+  bars_schema: ohlcv-1m
+  bars_start: "2010-06-07"   # esteso il 2026-09-23 per il ramo B (era 2016-09-20)
+  bars_end: "2026-09-19"
+  tick_start: "2021-09-20"
+  max_auto_cost_usd: 5.0
+  tick_budget_usd: 105
+  raw_dir: data/raw
+  events_dir: data/events
+
+sessions:
+  tz: America/New_York
+  rth_open: "09:30"
+  rth_close: "16:00"
+  on_open: "18:00"
+  min_rth_bars: 300
+
+instrument:
+  tick_size: 0.25
+  point_value_usd: 20.0
+
+detector:
+  max_excursion_minutes: 90
+  last_entry: "15:30"
+  time_stop: "15:55"
+  value_area_pct: 0.70
+
+costs:
+  commission_per_side_usd: 2.50
+  slippage_ticks_per_side: 1
+
+vault:
+  start: "2026-03-20"        # cassaforte: mai usata in nessuno script della Milestone 1
+  end: "2026-09-30"          # chiusa il 2026-10-07 (decisione dell'utente); dal 2026-10-01 solo prove in avanti
+
+features:
+  version: "1a"
+  atr_period_5m: 14
+  rel_vol_lookback_days: 20
+  pre_break_minutes: 30
+  reentry_slope_bars: 5
+  features_dir: data/features
+
+labels:
+  labels_dir: data/labels
+
+walkforward:
+  train_start: "2021-09-20"
+  test_windows:              # [inizio, fine] inclusi, session_date
+    - ["2023-10-01", "2024-03-31"]
+    - ["2024-04-01", "2024-09-30"]
+    - ["2024-10-01", "2025-03-31"]
+    - ["2025-04-01", "2025-09-30"]
+    - ["2025-10-01", "2026-03-19"]
+  embargo_trading_days: 1
+  val_months: 3
+
+model:
+  seed: 0
+  learning_rate: 0.03
+  feature_fraction: 0.7
+  num_leaves_grid: [7, 15]
+  min_data_in_leaf_grid: [20, 50, 100]
+  max_rounds: 2000
+  early_stopping_rounds: 100
+  monotone: {vol_slope_excursion: -1, vol_reentry_bar: 1, rr_ratio: -1, delta_excursion: 1, absorption_score: 1, delta_reentry: 1}
+  calibration_split: 0.5
+  model_dir: data/model
+
+decision:
+  margin_r: 0.1
+
+baselines:
+  rules_by_version:
+    "1a":
+      - {feature: vol_slope_excursion, op: "<", value: 0.0, values: [-0.05, -0.02, 0.0, 0.02, 0.05]}
+      - {feature: vol_reentry_bar,     op: ">", value: 1.0, values: [0.8, 1.0, 1.2, 1.5]}
+    "1b":
+      - {feature: vol_slope_excursion, op: "<", value: 0.0, values: [-0.05, -0.02, 0.0, 0.02, 0.05]}
+      - {feature: vol_reentry_bar,     op: ">", value: 1.0, values: [0.8, 1.0, 1.2, 1.5]}
+      - {feature: delta_excursion,     op: ">", value: 0.0, values: [-0.1, 0.0, 0.1, 0.2]}
+    "1c_A":
+      - {feature: vol_slope_excursion, op: "<", value: 0.0, values: [-0.05, -0.02, 0.0, 0.02, 0.05]}
+      - {feature: vol_reentry_bar,     op: ">", value: 1.0, values: [0.8, 1.0, 1.2, 1.5]}
+    "1c_B":
+      - {feature: vol_slope_excursion, op: "<", value: 0.0, values: [-0.05, -0.02, 0.0, 0.02, 0.05]}
+      - {feature: vol_reentry_bar,     op: ">", value: 1.0, values: [0.8, 1.0, 1.2, 1.5]}
+      - {feature: delta_excursion,     op: ">", value: 0.0, values: [-0.1, 0.0, 0.1, 0.2]}
+  c_opt_min_trades: 50
+
+backtest:
+  bootstrap_n: 10000
+  bootstrap_seed: 0
+  stress_slippage_ticks: [2, 3]
+  stress_commission_mult: 2
+  stress_drop_top_pct: 0.05
+  reports_dir: reports
+
+tick:
+  fraction: 0.45              # quota di giorni per mese (spec §12-bis)
+  seed: 0
+  tick_dir: data/tick
+  trades_dir: data/raw/trades_windows
+  extreme_zone_ticks: 4
+  extreme_delta_minutes: 3
+  large_trade_quantile: 0.95

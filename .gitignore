@@ -1,0 +1,19 @@
+# Licensed data and private local artifacts
+.env
+.env.*
+!.env.example
+data/
+**/cache/
+**/models/
+**/__pycache__/
+**/.pytest_cache/
+.venv/
+*.egg-info/
+*.dbn*
+*.parquet
+*.pkl
+*.npy
+*.npz
+*.csv
+*.tsv
+.playwright-mcp/

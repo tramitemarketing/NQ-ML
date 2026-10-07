@@ -1,0 +1,8 @@
+# Note sulla milestone 1b-S (order flow su giorni campionati)
+
+- **Shuffle AUC**: seed 0 fuori banda nelle pieghe 0 e 3 per entrambe le esecuzioni (1a_S 0.641/0.615; 1b 0.608/0.610). Rimisurato con 5 seed su 1a_S: piega 0 con vincoli monotoni [0.641, 0.399, 0.453, 0.607, 0.545] media 0.529, senza vincoli media 0.475; piega 3 con vincoli [0.615, 0.442, 0.517, 0.602, 0.434] media 0.522, senza 0.503. Distribuzione simmetrica attorno a 0.5 → non è leakage: test a seed singolo poco potente su n_fit 1.421, con un +0.03 strutturale dovuto ai vincoli monotoni (`rr_ratio: −1` ordina come il prior anche su label mescolate). Ipotesi per lo sguardo #3 (da pre-registrare, non applicata): shuffle multi-seed o senza vincoli.
+- **Giorno degraded**: 2026-03-16 marcato "degraded" da Databento (qualità del feed ridotta) nell'ultima finestra di test (piega 4).
+- **Quota**: 0.45 di config, 0.4450 effettiva (498/1119, arrotondamento mensile); soglia del criterio (iv) = 300 × 0.445 = 133.5 → 134.
+- **Calibrazione**: isotonica su 93–112 punti per piega (metà della validazione): `p` assume 14–46 valori distinti per piega (misurato nella review finale); la calibrazione costa circa +0.007/+0.008 di Brier rispetto alle probabilità grezze dei booster (misurato: Brier grezzo 1b 0.1844, 1a_S 0.1803).
+- **Griglia del bootstrap**: la CI del criterio (iii) è invariante alla griglia dei giorni del bootstrap (611 giorni di test / 272 campionati / 235 con trade: estremi che si muovono ≤ 0.003, misurato nella review finale).
+- **Conseguenza della regola §12-bis**: (i) e (ii) FAIL → **non si acquistano le finestre restanti**; lo sguardo #3 non è innescato da questa milestone.

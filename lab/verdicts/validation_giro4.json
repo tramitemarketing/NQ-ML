@@ -1,0 +1,42 @@
+[
+ {
+  "id": "r4_implied_har_plus_vxn",
+  "family": "r4_implied",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 2,
+  "alpha": 0.025,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.014366022401671185,
+   "lo": -0.00215374973064382,
+   "hi": 0.031367632240358545,
+   "p_two": 0.0945,
+   "p_pos": 0.0489
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "r4_implied_on_plus_vxn",
+  "family": "r4_implied",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 2,
+  "alpha": 0.025,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.005938266151109412,
+   "lo": -0.006802410602944202,
+   "hi": 0.01904368151995607,
+   "p_two": 0.363,
+   "p_pos": 0.1769
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ }
+]

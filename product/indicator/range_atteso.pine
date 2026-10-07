@@ -1,0 +1,189 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Range Atteso NQ (RTH) - previsione, prima dell'apertura, del range 09:30-16:00 NY di NQ/MNQ.
+//
+// STRUMENTO DI RISCHIO, NON UN SEGNALE: dice QUANTO e' probabile che il prezzo si muova oggi,
+// non DOVE. Non e' consulenza finanziaria. Vedi README.md per numeri fuori campione e limiti.
+//
+// Modello (log-HAR sul range + notte), coefficienti FISSI stimati 2010-07-08 -> 2023-09-29 (3.286 sessioni)
+// e valutati fuori campione 2023-10-02 -> 2026-03-19 (611 sessioni):
+//   ln(range%) = B0 + B_L1*l1 + B_M5*m5 + B_M22*m22 + B_ON*lon
+//   range previsto (punti) = exp(...) / 100 * close delle 09:29
+//   y     = ln(100 * (max RTH - min RTH) / open RTH)   di ogni sessione valida passata
+//   l1    = y dell'ultima sessione valida; m5 / m22 = media degli ultimi 5 / 22 y
+//   lon   = ln(100 * max(max notte - min notte, 0.25) / close 09:29), notte = 18:00 -> 09:29:59 NY
+//   sessione valida = almeno 10 barre RTH da 30 minuti (le mezze giornate sono escluse dalla storia)
+// B0 include gia' la correzione di smearing (la previsione e' un valore medio, non una mediana).
+//
+// COME SI EVITANO DATI FUTURI E REPAINTING
+// 1) Tutto il calcolo del modello gira DENTRO request.security sul timeframe "30": le barre da 30 minuti
+//    coincidono esattamente con i confini 18:00 / 09:30 / 16:00, quindi range RTH e notturno sono identici
+//    a quelli misurati sui dati da 1 minuto, e la storia di 22 sessioni e' disponibile anche su un grafico
+//    da 1 minuto con poche barre caricate.
+// 2) La previsione del giorno viene calcolata alla CHIUSURA della barra 09:00-09:30 (close = 09:29) e
+//    restituita con l'idioma raccomandato da TradingView:  expr[1] + lookahead=barmerge.lookahead_on.
+//    - expr[1] = valore dell'ultima barra da 30m GIA' CHIUSA; lookahead_on allinea quella barra chiusa
+//      alla barra corrente del grafico. Sullo storico e in tempo reale si ottiene lo stesso numero:
+//      niente repainting e niente sguardo al futuro.
+//    - NON si usa lookahead_off senza [1]: sullo storico darebbe il valore solo a barra 30m chiusa (ok), ma
+//      in tempo reale restituirebbe la barra 30m IN FORMAZIONE (il numero cambierebbe fino alle 09:30 e
+//      poi lo storico ricaricato mostrerebbe un valore diverso: repainting).
+//    - NON si usa lookahead_on senza [1]: sullo storico leggerebbe la barra 30m non ancora finita (futuro).
+// 3) Il valore viene "congelato" sul grafico alla prima barra RTH (09:30) e resta fisso fino a sera.
+// 4) ATR(14) giornaliero: ta.atr(14)[1] con lookahead_on = ATR fino alla sessione di IERI, stesso idioma.
+//@version=5
+indicator("Range Atteso NQ (RTH)", shorttitle="Range Atteso", overlay=true)
+
+// ------------------------------------------------------------------ coefficienti fissi (NON modificare)
+B0    = 0.220625
+B_L1  = 0.144593
+B_M5  = 0.298059
+B_M22 = 0.143113
+B_ON  = 0.300433
+N_HIST      = 22
+MIN_RTH_30M = 10
+TICK_NQ     = 0.25
+TZ          = "America/New_York"
+
+// ------------------------------------------------------------------ input
+kIn     = input.float(0.5, "k banda interna (apertura ± k × range previsto)", minval=0.05, step=0.05, group="Bande")
+kOut    = input.float(1.0, "k banda esterna (apertura ± k × range previsto)", minval=0.05, step=0.05, group="Bande")
+showOut = input.bool(true, "Mostra banda esterna", group="Bande")
+showOpen = input.bool(true, "Mostra apertura RTH", group="Bande")
+colIn   = input.color(color.orange, "Colore banda interna", group="Stile")
+colOut  = input.color(color.red, "Colore banda esterna", group="Stile")
+colFill = input.color(#FF980014, "Riempimento banda interna", group="Stile")
+posStr  = input.string("In alto a destra", "Posizione tabella", options=["In alto a destra", "In basso a destra", "In alto a sinistra", "In basso a sinistra"], group="Stile")
+usdNQ   = input.float(20.0, "Dollari per punto NQ", group="Contratti")
+usdMNQ  = input.float(2.0, "Dollari per punto MNQ", group="Contratti")
+
+// ------------------------------------------------------------------ controlli
+if not timeframe.isintraday or timeframe.in_seconds() > 1800 or 1800 % timeframe.in_seconds() != 0
+    runtime.error("Range Atteso: usa un grafico intraday con timeframe che divide 30 minuti (1, 2, 3, 5, 10, 15, 30 min).")
+
+// ------------------------------------------------------------------ modello (eseguito sulle barre da 30m)
+f_forecast() =>
+    var float onH = na
+    var float onL = na
+    var float rH  = na
+    var float rL  = na
+    var float rO  = na
+    var int   nR  = 0
+    var array<float> ys = array.new<float>()
+    var float fcPts = na
+    var float fcPct = na
+    var float ref   = na
+    // nuova sessione CME (18:00 NY): la sessione appena finita entra nella storia se e' valida
+    if timeframe.change("D")
+        if nR >= MIN_RTH_30M and not na(rO) and rO > 0
+            array.push(ys, math.log(100.0 * (rH - rL) / rO))
+            if array.size(ys) > N_HIST
+                array.shift(ys)
+        onH := na
+        onL := na
+        rH := na
+        rL := na
+        rO := na
+        nR := 0
+        fcPts := na
+        fcPct := na
+        ref := na
+    m = hour(time, TZ) * 60 + minute(time, TZ)          // minuto NY di APERTURA della barra da 30m
+    if m >= 1080 or m < 570                              // notte: 18:00 -> 09:29:59
+        onH := na(onH) ? high : math.max(onH, high)
+        onL := na(onL) ? low : math.min(onL, low)
+    else if m < 960                                      // RTH: 09:30 -> 15:59:59
+        if na(rO)
+            rO := open
+        rH := na(rH) ? high : math.max(rH, high)
+        rL := na(rL) ? low : math.min(rL, low)
+        nR += 1
+    // barra 09:00-09:30: alla sua chiusura (09:29:59) la notte e' completa -> previsione del giorno
+    if m == 540 and array.size(ys) >= N_HIST and not na(onH)
+        n = array.size(ys)
+        l1 = array.get(ys, n - 1)
+        s5 = 0.0
+        for i = n - 5 to n - 1
+            s5 += array.get(ys, i)
+        m5 = s5 / 5.0
+        m22 = array.avg(ys)
+        lon = math.log(100.0 * math.max(onH - onL, TICK_NQ) / close)
+        fcPct := math.exp(B0 + B_L1 * l1 + B_M5 * m5 + B_M22 * m22 + B_ON * lon)
+        fcPts := fcPct / 100.0 * close
+        ref := close
+    nh = array.size(ys)
+    // [1]: solo barre da 30m gia' chiuse (vedi intestazione)
+    [fcPts[1], fcPct[1], ref[1], nh[1]]
+
+[fcS, pctS, refS, nhS] = request.security(syminfo.tickerid, "30", f_forecast(), lookahead=barmerge.lookahead_on)
+atrD = request.security(syminfo.tickerid, "D", ta.atr(14)[1], lookahead=barmerge.lookahead_on)
+
+// ------------------------------------------------------------------ grafico: apertura RTH e bande
+mC = hour(time, TZ) * 60 + minute(time, TZ)
+inRth = mC >= 570 and mC < 960
+newDay = timeframe.change("D")
+rthStart = inRth and (not inRth[1] or newDay)
+
+var float dayFc   = na
+var float dayPct  = na
+var float dayRef  = na
+var float dayOpen = na
+var float dayAtr  = na
+var float curH    = na
+var float curL    = na
+var int   dayNh   = 0
+var string dayStr = ""
+if newDay
+    dayFc := na
+    dayPct := na
+    dayRef := na
+    dayOpen := na
+    curH := na
+    curL := na
+if rthStart
+    dayFc := fcS                  // congelato alle 09:30: calcolato con dati fino alle 09:29:59
+    dayPct := pctS
+    dayRef := refS
+    dayOpen := open
+    dayAtr := atrD
+    dayNh := nz(nhS)
+    dayStr := str.format_time(time, "yyyy-MM-dd", TZ)
+    curH := high
+    curL := low
+else if inRth and not na(dayOpen)
+    curH := math.max(curH, high)
+    curL := math.min(curL, low)
+
+show = inRth and not na(dayFc) and not na(dayOpen)
+pInUp  = plot(show ? dayOpen + kIn * dayFc : na, "Banda interna sup.", colIn, 2, plot.style_linebr)
+pInDn  = plot(show ? dayOpen - kIn * dayFc : na, "Banda interna inf.", colIn, 2, plot.style_linebr)
+plot(show and showOut ? dayOpen + kOut * dayFc : na, "Banda esterna sup.", colOut, 2, plot.style_linebr)
+plot(show and showOut ? dayOpen - kOut * dayFc : na, "Banda esterna inf.", colOut, 2, plot.style_linebr)
+plot(show and showOpen ? dayOpen : na, "Apertura RTH", color.new(color.gray, 30), 1, plot.style_linebr)
+fill(pInUp, pInDn, colFill, "Riempimento banda interna")
+plot(dayFc, "Range previsto (punti)", display=display.data_window)
+plot(atrD, "ATR(14) giornaliero (fino a ieri)", display=display.data_window)
+
+// ------------------------------------------------------------------ tabella
+pos = posStr == "In alto a destra" ? position.top_right : posStr == "In basso a destra" ? position.bottom_right : posStr == "In alto a sinistra" ? position.top_left : position.bottom_left
+var table tb = table.new(pos, 2, 11, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.new(color.gray, 60))
+
+f_row(r, a, b) =>
+    table.cell(tb, 0, r, a, text_color=color.silver, text_size=size.small, text_halign=text.align_left)
+    table.cell(tb, 1, r, b, text_color=color.white, text_size=size.small, text_halign=text.align_right)
+
+f_n(x) =>
+    na(x) ? "n.d." : str.tostring(x, "#,##0")
+
+if barstate.islast
+    isNq = syminfo.root == "NQ" or syminfo.root == "MNQ"
+    f_row(0, "Range Atteso RTH", dayStr == "" ? "in attesa delle 09:30" : dayStr)
+    f_row(1, "Range previsto", na(dayFc) ? (dayNh < N_HIST ? "riscaldamento" : "n.d.") : f_n(dayFc) + " pt  (" + str.tostring(dayPct, "0.00") + "%)")
+    f_row(2, "In $, 1 contratto NQ", na(dayFc) ? "n.d." : "$" + f_n(dayFc * usdNQ))
+    f_row(3, "In $, 1 contratto MNQ", na(dayFc) ? "n.d." : "$" + f_n(dayFc * usdMNQ))
+    f_row(4, "Banda ±" + str.tostring(kIn) + "×", na(dayFc) ? "n.d." : f_n(dayOpen - kIn * dayFc) + " / " + f_n(dayOpen + kIn * dayFc))
+    f_row(5, "Banda ±" + str.tostring(kOut) + "×", na(dayFc) ? "n.d." : f_n(dayOpen - kOut * dayFc) + " / " + f_n(dayOpen + kOut * dayFc))
+    f_row(6, "ATR(14) giornaliero", f_n(dayAtr) + " pt")
+    f_row(7, "Previsto / ATR(14)", na(dayFc) or na(dayAtr) ? "n.d." : str.tostring(dayFc / dayAtr, "0.00") + "  (tipico ~0,80)")
+    f_row(8, "Range RTH finora", na(curH) ? "n.d." : f_n(curH - curL) + " pt = " + (na(dayFc) ? "?" : str.tostring(100 * (curH - curL) / dayFc, "0") + "% del previsto"))
+    f_row(9, "Storia (sessioni)", str.tostring(dayNh) + "/" + str.tostring(N_HIST))
+    f_row(10, isNq ? "Rischio, non direzione" : "ATTENZIONE: stimato su NQ", isNq ? "non e' un segnale" : syminfo.root)

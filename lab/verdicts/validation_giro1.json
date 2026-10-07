@@ -1,0 +1,386 @@
+[
+ {
+  "id": "intraday_momentum_hivol_last30",
+  "family": "intraday_momentum",
+  "kind": "tradeable",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 386,
+  "stat": {
+   "n": 386,
+   "n_days": 386,
+   "mean": 7.882124352331606,
+   "lo": 1.4682318652849742,
+   "hi": 14.118377590673568,
+   "p_two": 0.0128,
+   "p_pos": 0.0051
+  },
+  "stat_beta_adj": {
+   "n": 386,
+   "n_days": 386,
+   "mean": 7.902723153681332,
+   "lo": 1.4902249542760884,
+   "hi": 14.149022031638262,
+   "p_two": 0.0125,
+   "p_pos": 0.0051
+  },
+  "years": {
+   "2019": -0.217,
+   "2020": 1.638,
+   "2021": 8.917,
+   "2022": 15.847
+  },
+  "years_pos": 3,
+  "drop_top20": 0.08333333333333333,
+  "gross_mean": 8.632124352331607,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": true,
+   "c4_droptop": true
+  },
+  "usd_per_trade": 157.6424870466321,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "intraday_momentum_rin_last30_gross",
+  "family": "intraday_momentum",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 1186,
+  "stat": {
+   "n": 1186,
+   "n_days": 1186,
+   "mean": 1.7639123102866778,
+   "lo": -0.8107135328836426,
+   "hi": 4.330132799325463,
+   "p_two": 0.1848,
+   "p_pos": 0.0927
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "calendar_turnaround_tue_am",
+  "family": "calendar",
+  "kind": "tradeable",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 83,
+  "stat": {
+   "n": 83,
+   "n_days": 83,
+   "mean": -5.283132530120482,
+   "lo": -30.80173192771084,
+   "hi": 20.256249999999994,
+   "p_two": 0.6783,
+   "p_pos": 0.6578
+  },
+  "stat_beta_adj": {
+   "n": 83,
+   "n_days": 83,
+   "mean": -7.256439073128382,
+   "lo": -32.77503847071899,
+   "hi": 18.282943456992097,
+   "p_two": 0.5746,
+   "p_pos": 0.7128
+  },
+  "years": {
+   "2019": 19.75,
+   "2020": -5.518,
+   "2021": -2.158,
+   "2022": -46.728,
+   "2023": 44.333
+  },
+  "years_pos": 2,
+  "drop_top20": -51.62698412698413,
+  "gross_mean": -4.533132530120482,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": false,
+   "c4_droptop": false
+  },
+  "usd_per_trade": -105.66265060240964,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "multiday_contra10_ls",
+  "family": "multiday",
+  "kind": "tradeable",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 134,
+  "stat": {
+   "n": 134,
+   "n_days": 134,
+   "mean": -76.8544776119403,
+   "lo": -157.68731343283582,
+   "hi": -1.0010727611940686,
+   "p_two": 0.0533,
+   "p_pos": 0.9706
+  },
+  "stat_beta_adj": {
+   "n": 134,
+   "n_days": 134,
+   "mean": -60.78487775455255,
+   "lo": -139.73036114430704,
+   "hi": 12.85539497387658,
+   "p_two": 0.118,
+   "p_pos": 0.9368
+  },
+  "years": {
+   "2019": -83.87,
+   "2020": -104.777,
+   "2021": -6.553,
+   "2022": -87.39,
+   "2023": -150.1
+  },
+  "years_pos": 0,
+  "drop_top20": -169.81359649122808,
+  "gross_mean": -76.1044776119403,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": false,
+   "c4_droptop": false
+  },
+  "usd_per_trade": -1537.089552238806,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "multiday_contra10_long",
+  "family": "multiday",
+  "kind": "tradeable",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 67,
+  "stat": {
+   "n": 67,
+   "n_days": 67,
+   "mean": -19.75,
+   "lo": -133.13861940298509,
+   "hi": 80.54160447761194,
+   "p_two": 0.7176,
+   "p_pos": 0.6502
+  },
+  "stat_beta_adj": {
+   "n": 67,
+   "n_days": 67,
+   "mean": -61.69319333595778,
+   "lo": -186.71474706887565,
+   "hi": 47.92259665261375,
+   "p_two": 0.3053,
+   "p_pos": 0.8455
+  },
+  "years": {
+   "2019": 22.386,
+   "2020": 29.714,
+   "2021": 75.053,
+   "2022": -268.942,
+   "2023": 8.475
+  },
+  "years_pos": 4,
+  "drop_top20": -173.21808510638297,
+  "gross_mean": -19.0,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": true,
+   "c4_droptop": false
+  },
+  "usd_per_trade": -395.0,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "micro_surprise_continuation",
+  "family": "micro",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 2006,
+  "stat": {
+   "n": 2006,
+   "n_days": 512,
+   "mean": 3.600074775672981,
+   "lo": -1.005614972405924,
+   "hi": 8.035306073793212,
+   "p_two": 0.1176,
+   "p_pos": 0.0568
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "micro_overnight_break_fade",
+  "family": "micro",
+  "kind": "tradeable",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 498,
+  "stat": {
+   "n": 498,
+   "n_days": 498,
+   "mean": 1.538152610441767,
+   "lo": -5.984964859437751,
+   "hi": 9.503074799196778,
+   "p_two": 0.6981,
+   "p_pos": 0.3598
+  },
+  "stat_beta_adj": {
+   "n": 498,
+   "n_days": 498,
+   "mean": 1.6234494097908578,
+   "lo": -5.9028127773257735,
+   "hi": 9.580107048780793,
+   "p_two": 0.6819,
+   "p_pos": 0.3514
+  },
+  "years": {
+   "2019": -7.689,
+   "2020": 0.64,
+   "2021": 6.338,
+   "2022": 10.345,
+   "2023": -4.53
+  },
+  "years_pos": 3,
+  "drop_top20": -8.53765690376569,
+  "gross_mean": 2.288152610441767,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": true,
+   "c4_droptop": false
+  },
+  "usd_per_trade": 30.76305220883534,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "cross_session_onrange_rthrange",
+  "family": "cross_session",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.12071158059213682,
+   "lo": 0.09333894036100933,
+   "hi": 0.14765863960930203,
+   "p_two": 0.0001,
+   "p_pos": 0.0001
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "cross_session_rth_to_evening",
+  "family": "cross_session",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 1186,
+  "stat": {
+   "n": 1186,
+   "n_days": 1186,
+   "mean": 1.6987774030354132,
+   "lo": 0.651343802698145,
+   "hi": 2.7540314080944346,
+   "p_two": 0.0013,
+   "p_pos": 0.0007
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "ml_rank30",
+  "family": "ml",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 14244,
+  "stat": {
+   "n": 14244,
+   "n_days": 1187,
+   "mean": 0.013594950559995154,
+   "lo": -0.002602032685913579,
+   "hi": 0.02983124641405353,
+   "p_two": 0.0988,
+   "p_pos": 0.0492
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "vol_har_vs_mean22",
+  "family": "vol",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.21409582878894473,
+   "lo": 0.17073780848026796,
+   "hi": 0.2605289092349796,
+   "p_two": 0.0001,
+   "p_pos": 0.0001
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "vol_leverage_sign",
+  "family": "vol",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 1187,
+  "stat": {
+   "n": 1187,
+   "n_days": 1187,
+   "mean": 0.033358200860193324,
+   "lo": -0.0007964539143283128,
+   "hi": 0.06647602006323282,
+   "p_two": 0.0514,
+   "p_pos": 0.0243
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "vol_midday_variance_ratio",
+  "family": "vol",
+  "kind": "regularity",
+  "phase": "validation",
+  "k": 13,
+  "alpha": 0.0038461538461538464,
+  "n": 1183,
+  "stat": {
+   "n": 1183,
+   "n_days": 1183,
+   "mean": -0.05617320189098515,
+   "lo": -0.09716231994390014,
+   "hi": -0.013949450530199949,
+   "p_two": 0.006,
+   "p_pos": 0.997
+  },
+  "expected_sign": -1,
+  "verdict": "FAIL"
+ }
+]

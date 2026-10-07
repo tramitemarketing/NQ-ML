@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "Please cite the working paper and this versioned research snapshot."
+type: software
+title: "NQ-ML: Testing Intraday Trading Signals in Nasdaq-100 Futures"
+authors:
+  - family-names: Febo
+    given-names: Giovanni
+version: "4.1"
+date-released: "2026-10-07"
+url: "https://github.com/tramitemarketing/NQ-ML"
+repository-code: "https://github.com/tramitemarketing/NQ-ML"
+preferred-citation:
+  type: report
+  title: "Testing Intraday Trading Signals in Nasdaq-100 Futures: Measurement Bias, Multiple Testing, and Statistical Power"
+  authors:
+    - family-names: Febo
+      given-names: Giovanni
+  year: 2026
+  version: "4.1"
+  url: "https://github.com/tramitemarketing/NQ-ML/releases/tag/v4.1"

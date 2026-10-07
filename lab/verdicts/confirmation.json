@@ -1,0 +1,85 @@
+[
+ {
+  "id": "r2_range_pcband_breakout",
+  "family": "r2_range",
+  "kind": "tradeable",
+  "phase": "confirmation",
+  "k": 3,
+  "alpha": 0.016666666666666666,
+  "n": 190,
+  "stat": {
+   "n": 190,
+   "n_days": 190,
+   "mean": -2.585008971834778,
+   "lo": -15.770262281980735,
+   "hi": 12.12810000936429,
+   "p_two": 0.7172,
+   "p_pos": 0.6271
+  },
+  "stat_beta_adj": {
+   "n": 190,
+   "n_days": 190,
+   "mean": -2.4896315767580015,
+   "lo": -15.682876896448544,
+   "hi": 12.191147930288404,
+   "p_two": 0.7269,
+   "p_pos": 0.6223
+  },
+  "years": {
+   "2024": 1.59,
+   "2025": -5.984,
+   "2026": -12.482
+  },
+  "years_pos": 1,
+  "drop_top20": -28.289127674403577,
+  "gross_mean": -1.8350089718347782,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": false,
+   "c4_droptop": false
+  },
+  "usd_per_trade": -51.700179436695564,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "r2_range_pcband_breakout_R",
+  "family": "r2_range",
+  "kind": "regularity",
+  "phase": "confirmation",
+  "k": 3,
+  "alpha": 0.016666666666666666,
+  "n": 190,
+  "stat": {
+   "n": 190,
+   "n_days": 190,
+   "mean": 0.006144804198634684,
+   "lo": -0.044354969422033035,
+   "hi": 0.06533660227485023,
+   "p_two": 0.8268,
+   "p_pos": 0.3945
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "r2_footprints_slice_continuation",
+  "family": "r2_footprints",
+  "kind": "regularity",
+  "phase": "confirmation",
+  "k": 3,
+  "alpha": 0.016666666666666666,
+  "n": 611,
+  "stat": {
+   "n": 611,
+   "n_days": 611,
+   "mean": 0.009970605238944394,
+   "lo": -0.009472227650617615,
+   "hi": 0.029763281247879518,
+   "p_two": 0.3124,
+   "p_pos": 0.1561
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ }
+]

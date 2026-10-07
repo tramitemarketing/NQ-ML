@@ -1,0 +1,105 @@
+[
+ {
+  "id": "cross_session_onrange_rthrange",
+  "family": "cross_session",
+  "kind": "regularity",
+  "phase": "confirmation",
+  "k": 4,
+  "alpha": 0.0125,
+  "n": 611,
+  "stat": {
+   "n": 611,
+   "n_days": 611,
+   "mean": 0.16365446816213727,
+   "lo": 0.12358271940840082,
+   "hi": 0.204039258545298,
+   "p_two": 0.0001,
+   "p_pos": 0.0001
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "cross_session_rth_to_evening",
+  "family": "cross_session",
+  "kind": "regularity",
+  "phase": "confirmation",
+  "k": 4,
+  "alpha": 0.0125,
+  "n": 609,
+  "stat": {
+   "n": 609,
+   "n_days": 609,
+   "mean": 2.5004105090311985,
+   "lo": -1.2902298850574712,
+   "hi": 5.64045566502463,
+   "p_two": 0.1498,
+   "p_pos": 0.0664
+  },
+  "expected_sign": 1,
+  "verdict": "FAIL"
+ },
+ {
+  "id": "vol_har_vs_mean22",
+  "family": "vol",
+  "kind": "regularity",
+  "phase": "confirmation",
+  "k": 4,
+  "alpha": 0.0125,
+  "n": 611,
+  "stat": {
+   "n": 611,
+   "n_days": 611,
+   "mean": 0.17541691018808275,
+   "lo": 0.12788061305240547,
+   "hi": 0.22442075864353914,
+   "p_two": 0.0001,
+   "p_pos": 0.0001
+  },
+  "expected_sign": 1,
+  "verdict": "PASS"
+ },
+ {
+  "id": "postval_rth_to_evening_trade",
+  "family": "postval",
+  "kind": "tradeable",
+  "phase": "confirmation",
+  "k": 4,
+  "alpha": 0.0125,
+  "n": 609,
+  "stat": {
+   "n": 609,
+   "n_days": 609,
+   "mean": 1.7504105090311988,
+   "lo": -2.0402298850574714,
+   "hi": 4.89045566502463,
+   "p_two": 0.3183,
+   "p_pos": 0.1574
+  },
+  "stat_beta_adj": {
+   "n": 609,
+   "n_days": 609,
+   "mean": 1.836177554809946,
+   "lo": -1.952842626019391,
+   "hi": 4.989195832264451,
+   "p_two": 0.2935,
+   "p_pos": 0.144
+  },
+  "years": {
+   "2024": 2.156,
+   "2025": 1.687,
+   "2026": -0.321
+  },
+  "years_pos": 2,
+  "drop_top20": -2.0543293718166384,
+  "gross_mean": 2.5004105090311985,
+  "crit": {
+   "c1_p": false,
+   "c2_beta": false,
+   "c3_years": true,
+   "c4_droptop": false
+  },
+  "usd_per_trade": 35.008210180623976,
+  "verdict": "FAIL"
+ }
+]

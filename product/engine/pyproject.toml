@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "revisore"
+version = "0.1.0"
+description = "Revisore di backtest - motore Pro (audit statistico di strategie di trading). Strumento educativo, non consulenza finanziaria."
+requires-python = ">=3.10"
+dependencies = ["numpy", "pandas>=2.1", "scipy", "matplotlib", "pyarrow"]
+
+[project.scripts]
+revisore = "revisore.cli:main"
+
+[tool.setuptools]
+packages = ["revisore"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

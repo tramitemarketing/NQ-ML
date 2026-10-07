@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing Intraday Trading Signals in Nasdaq-100 Futures: Measurement Bias, Multiple Testing, and Statistical Power</title>
+
+
+<style>
+:root{
+  --paper:#FFFFFF; --ink:#111111; --muted:#5A5A5A; --rule:#D4D4D4; --tint:#F3F3F3;
+  --accent:#111111; --fail:#FFFFFF; --pass:#111111; --fail-bg:#111111; --pass-bg:transparent;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",Consolas,"Courier New",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F0F0F; --ink:#EDEDED; --muted:#A3A3A3; --rule:#333333; --tint:#1B1B1B;
+    --accent:#EDEDED; --fail:#0F0F0F; --pass:#EDEDED; --fail-bg:#EDEDED; --pass-bg:transparent;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F0F0F; --ink:#EDEDED; --muted:#A3A3A3; --rule:#333333; --tint:#1B1B1B;
+  --accent:#EDEDED; --fail:#0F0F0F; --pass:#EDEDED; --fail-bg:#EDEDED; --pass-bg:transparent;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17.5px;line-height:1.55;
+  padding-block:2.5rem 5rem;padding-inline:clamp(16px,5vw,48px)}
+.page{max-width:72ch;margin:0 auto}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(1.9rem,4.2vw,2.6rem);font-weight:600;letter-spacing:-0.01em;padding-bottom:1.1rem;border-bottom:3px double var(--ink)}
+.part{font-family:var(--sans);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;text-align:center;margin:3.2rem 0 0;padding:.7rem 0;border-top:3px double var(--ink);border-bottom:1px solid var(--ink)}
+h2{font-size:1.5rem;font-weight:600;margin-top:2.6rem;margin-bottom:.7rem;padding-top:1rem;border-top:1px solid var(--rule)}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem;margin-bottom:.4rem}
+p{margin:0 0 1rem}
+.eyebrow{font-family:var(--sans);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+.meta{font-family:var(--sans);font-size:.88rem;color:var(--muted);display:grid;grid-template-columns:max-content 1fr;gap:.25rem 1rem;margin:1.4rem 0 0}
+.meta dt{font-weight:600;color:var(--ink)}
+.meta dd{margin:0}
+.abstract{margin:2rem 0 0;padding-left:1.2rem;border-left:3px solid var(--accent)}
+.abstract .lab{font-family:var(--sans);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);font-weight:600;margin-bottom:.3rem}
+.abstract p{font-size:1rem}
+.abstract.en p{font-style:italic}
+.kw{font-family:var(--sans);font-size:.85rem;color:var(--muted);margin-top:1.4rem}
+code,.mono{font-family:var(--mono);font-size:.86em}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:2px}
+.tbl{overflow-x:auto;margin:1rem 0 1.4rem;border-top:2px solid var(--ink);border-bottom:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.86rem;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:600;padding:.5rem .6rem;border-bottom:1px solid var(--rule);vertical-align:bottom;white-space:nowrap}
+td{padding:.42rem .6rem;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;white-space:nowrap}
+.cap{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin:-.6rem 0 1.6rem}
+.cap b{color:var(--ink);font-weight:600}
+figure{margin:1.6rem 0}
+figure img{display:block;max-width:100%;height:auto;border:1px solid var(--rule);background:#fff;filter:grayscale(1) contrast(1.05)}
+figcaption{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:.5rem}
+figcaption b{color:var(--ink);font-weight:600}
+.chip{display:inline-block;font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.06em;padding:.1rem .45rem;border-radius:3px;vertical-align:middle}
+.chip.fail{color:var(--fail);background:var(--fail-bg)}
+.chip.pass{color:var(--pass);background:var(--pass-bg);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.na{color:var(--muted);background:var(--tint)}
+.eq{font-family:var(--serif);font-style:italic;text-align:center;margin:.8rem 0 1.1rem;font-size:1.05rem}
+.eq .no{float:right;font-style:normal;color:var(--muted);font-family:var(--sans);font-size:.85rem}
+ul,ol{padding-left:1.3rem;margin:0 0 1rem}
+li{margin-bottom:.35rem}
+.note{font-family:var(--sans);font-size:.9rem;color:var(--muted);border-left:2px solid var(--rule);padding-left:.9rem;margin:1rem 0 1.4rem}
+.key{background:var(--tint);padding:1rem 1.2rem;margin:1.2rem 0 1.6rem}
+.key p:last-child{margin-bottom:0}
+.refs{font-family:var(--sans);font-size:.88rem}
+.refs li{margin-bottom:.5rem}
+.small{font-size:.9rem}
+@media print{
+  body{padding:0;font-size:11pt;background:#fff;color:#000}
+  h2{break-after:avoid} figure,.tbl{break-inside:avoid}
+  a{color:#000;text-decoration:none}
+}
+
+@page{size:A4;margin:18mm 17mm 20mm}
+@media print{
+  .page{max-width:none} body{font-family:Georgia,"Times New Roman",serif;font-size:10.5pt;line-height:1.4}
+  h1{font-size:24pt} h2{font-size:15pt;break-after:avoid} h3{break-after:avoid}
+  p{orphans:3;widows:3} .meta{display:block;font-size:9pt}.meta dt{margin-top:5pt}.meta dd{margin-bottom:3pt}
+  .abstract p{font-size:10pt}.abstract{margin-top:15pt}.tbl{overflow:visible;break-inside:auto}
+  table{font-size:8pt}th{white-space:normal}tr{break-inside:avoid}thead{display:table-header-group}
+  .refs{font-size:9pt}.mono,code{overflow-wrap:anywhere}.part{break-after:avoid}
+}
+</style>
+
+<div class="page">
+<div class="eyebrow">Working paper · version 4.1 · 7 October 2026 · publication adaptation of research version 4.0</div>
+<h1>Testing Intraday Trading Signals in Nasdaq-100 Futures: Measurement Bias, Multiple Testing, and Statistical Power</h1>
+
+<dl class="meta">
+  <dt>Author</dt><dd>Giovanni Febo · independent research, secondary-school student, Italy</dd>
+  <dt>AI disclosure</dt><dd>Claude (Anthropic) substantially assisted research design, code development, execution, analysis, drafting, and reviews in separate model sessions. Codex (OpenAI) assisted the publication adaptation, editorial clarification, and repository preparation. These model reviews are not independent human peer review. Giovanni Febo is the sole human author.</dd>
+  <dt>Review status</dt><dd>Working paper. Not peer reviewed by independent human reviewers; model-assisted reviews do not constitute peer review.</dd>
+  <dt>Conflict of interest</dt><dd>the author is the trader whose strategy is being tested and had an interest in a positive outcome. The local records document criteria before the relevant executions, with prior exposure, later amendments and additional looks disclosed in the paper.</dd>
+  <dt>Code and records</dt><dd><a href="https://github.com/tramitemarketing/NQ-ML">https://github.com/tramitemarketing/NQ-ML</a>. Public snapshot; original local history is not published. Part I source reference: 177ca1e; Part II: 3a07983. See PROVENANCE.md for the limits of the preregistration evidence.</dd>
+  <dt>Period</dt><dd>Part I: events 2016-09-20 → 2026-03-19, out of sample 2023-10-02 → 2026-03-19. Part II: 2010-06-07 → 2026-03-19 in three blocks. Vault 2026-03-20 → 2026-09-30 documented by the author as closed without evaluation; from 2026-10-01 only pre-registered forward tests.</dd>
+  <dt>Ledger</dt><dd><span class="mono">oos_looks.md</span> (looks 1 → 3-ter), <span class="mono">screening_looks.md</span> (S1 → STEP 0) and <span class="mono">lab/ledger/</span> (5,013 rows in 25 files, one per test looked at, failures included)</dd>
+  <dt>Version 4.1</dt><dd>Editorial adaptation: shorter abstract, scoped negative conclusions, clarified reuse of time blocks, explicit AI disclosure, and public-code availability. No new market-data experiment was run.</dd>
+</dl>
+
+<div class="abstract"><div class="lab">Abstract</div><p>This study evaluates intraday trading signals on Nasdaq-100 futures using data spanning June 2010 to March 2026. An initial value-area study compares machine-learning selection with a calibrated geometric prior in three documented milestones. A subsequent laboratory evaluates 24 hypothesis families, logs 5,013 tests, and searches 480,181 automatically generated rules. The analysis identifies a time-stop labelling artefact, look-ahead bias in a placebo control, and outcome-dependent sampling. Correcting these defects changes the interpretation of several apparently positive findings. None of the tested directional strategies meets all confirmation criteria. The maximum real t-statistic in the automatic search is 4.18, compared with a median maximum of 4.01 across 700 placebo worlds (search-adjusted p = 0.31). The sole directional candidate passing validation changes from +12.06 to -2.59 net points per trade in confirmation; its 190-trade confirmation sample has only about 10% power against half the validation effect, so this outcome does not establish the absence of a smaller effect. Two volatility relationships persist across the laboratory time blocks: realized-variance persistence and the association between overnight and regular-session ranges. Directional predictability and volatility predictability are distinguished throughout. The contribution is a documented case study of measurement corrections, search controls, and power-aware interpretation, rather than a general claim that profitable trading signals do not exist. Public code, specifications, aggregate reports, and experiment ledgers accompany the paper; licensed market data are excluded.</p><p class="small">AI disclosure: Claude (Anthropic) substantially assisted research design, code development, execution, analysis, drafting, and reviews in separate model sessions. Codex (OpenAI) assisted the publication adaptation, editorial clarification, and repository preparation. These model reviews are not independent human peer review. Giovanni Febo is the sole human author.</p></div>
+<div class="kw"><b>Keywords:</b> Nasdaq-100 futures; intraday trading; backtest bias; multiple testing; preregistration; statistical power; placebo tests; realized volatility; machine learning</div>
+<div class="part">Part I — The value area setup study (with editorial clarifications)</div>
+
+<h2>Research chronology and interpretation</h2>
+<p>The date range 2023-10-02 to 2026-03-19 was evaluated in the original Part I walk-forward milestones (Tables 2-5 and Appendix A). Statements in the previous manuscript that this out-of-sample window was “never opened” referred only to the later exploratory branches in §11 whose proposed confirmation was not executed. They do not mean that these calendar dates had never been inspected anywhere in the project. Part II subsequently uses substantially the same dates as its confirmation block (starting 2023-10-01). Its controller limits access per candidate, but this is not a globally untouched holdout for the entire evolving project.</p>
+<p>Part I and Part II are a sequence of related experiments on one instrument, not independent replications on new markets. Discovery-only follow-ups and the descriptive Expected Range evaluation (§17) must be distinguished from candidate-level confirmatory tests. All claims about an unopened vault concern the author's documented protocol status, not a third-party access audit. The original Part I specification used a vault end date of 2026-09-19; the later laboratory protocol and final closure use 2026-09-30. No vault data were accessed in this publication adaptation.</p>
+<p>“Pre-registered” here means that the original local Git records document criteria committed before the relevant execution, with later amendments and looks disclosed. The public repository is a fresh publication snapshot, not the original full Git history and not an independently timestamped preregistration service. Original commit identifiers are provenance references, not public GitHub links or proof of an external timestamp. The paper therefore reports the author's documented chronology with this verification limit.</p>
+
+<h2>1. Introduction</h2>
+<p>The strategy under examination is discretionary: the trader watches the session's volume profile, waits for price to leave the value area (the range containing 70% of the volume around the point of control), checks that the volume of the excursion dies out and that the order flow shows absorption, and trades the re-entry into the value area with a stop beyond the extreme of the excursion and a target at the opposite edge. The research question is not “does the strategy work?” but a narrower and verifiable one: <b>is there, in the data observable at decision time, information that makes it possible to select the better setups beyond what the geometry of stop and target already says?</b></p>
+<p>The distinction matters. A setup with a 20-point stop and a 40-point target has, in the absence of any other information, a success probability of about 1/(1 + 2) = 0.33 — the probability with which a random walk first touches the nearer level. Any model that “predicts” this quantity looks skilful (AUC ≈ 0.76) without knowing anything about the market. For this reason every milestone compares the model with the <b>geometric prior</b> <i>p</i><sub>rw</sub> = 1/(1 + rr), where rr is the ratio between target distance and stop distance, and, in the last milestone, with its calibrated version.</p>
+<p>The preregistration rationale follows Nosek et al. (2018); multiple-test screening uses Benjamini and Hochberg (1995), with the assumptions and dependence limits discussed below. The work is organised in pre-registered milestones: success criteria, thresholds, windows and reading rules are written and committed before the out-of-sample results are observed, and observations are recorded in a ledger now included in the public snapshot. The protocol allowed three free “looks”; all three were used.</p>
+
+<h2>2. Data</h2>
+<p>All data come from Databento, dataset <span class="mono">GLBX.MDP3</span> (CME Globex), continuous symbol <span class="mono">NQ.v.0</span>. Purchase costs are reported because they determined the design of the tick sampling.</p>
+<div class="tbl"><table>
+<thead><tr><th>Series</th><th>Schema</th><th>Period</th><th class="n">Volume</th><th class="n">Cost</th></tr></thead><tbody>
+<tr><td>1-minute bars</td><td><span class="mono">ohlcv-1m</span></td><td>2016-09-20 → 2026-09-19</td><td class="n">121 monthly files</td><td class="n">$12.81</td></tr>
+<tr><td>Tick trades</td><td><span class="mono">trades</span></td><td>498 sampled days in 2021-09-20 → 2026-03-19</td><td class="n">2,062 windows · 66,440 min · 62.66 M trades · 580 MB</td><td class="n">$89.17</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 1.</b> Data sources. The tick cost was computed exactly with <span class="mono">metadata.get_cost</span> on every window and committed to the repository before the purchase (<span class="mono">reports/1b_sampling.md</span>).</p>
+<p><b>Sessions.</b> Regular trading hours 09:30–16:00 ET; overnight value area computed on 18:00–09:29 ET and held fixed; “developing” value area recomputed at every 5-minute close. Days with fewer than 300 RTH bars are excluded.</p>
+<p><b>Tick sampling.</b> The cost of trades for all excursion windows over the 4.5 usable years was estimated at $230, above the available credit. The protocol (§12-bis of the specification) therefore pre-registered a stratified sample: in each calendar month round(0.45 · <i>n</i>) valid days are drawn with a seed-0 generator, so that every walk-forward window and every year has the same share. Ticks are purchased only in the windows [<i>break</i>, <i>re-entry</i>) merged by day. Result: 498 days out of 1,119 (44.5%), from 4 to 10 per month (4 in the initial partial month, 6 in the final one, 8–10 elsewhere), with no empty months. The aggressor-side convention (<span class="mono">A</span> = sell, <span class="mono">B</span> = buy) was verified on the data: in 86.3% of the 52,434 one-minute bars with a move ≥ 2 points, <span class="mono">B</span> volume exceeds <span class="mono">A</span> when the bar rises. One day (2026-03-16) is flagged by the vendor as of degraded quality.</p>
+
+<h2>3. Method</h2>
+<h3>3.1 Detector and label</h3>
+<p>Four independent state machines (overnight / developing value area × long / short) follow each session on 5-minute bars: <i>inside</i> → <i>broken</i> (close beyond the edge) → <i>event</i> (close back inside). The excursion cannot last more than 90 minutes; the last entry is at 15:30 ET and open positions are closed at 15:55. The reference entry is the open of the one-minute bar following confirmation; the stop is the extreme of the excursion plus one tick beyond it (0.25 points), the target the opposite edge of the value area. The label is 1 if the target is touched before the stop (limit order), 0 otherwise; an open already beyond stop or target cancels the event (gap rule). Costs are applied afterwards: commission $2.50 per side, slippage of one tick (0.25 points, $5) per side on the entry and on every market exit; the target is a limit order. One NQ point is worth $20.</p>
+<p>The detector produces 19,210 events in ten years (7.7 candidates per day), with median stop 20.75 points, median target 40.25 and median rr 1.92. In the usable training period (from 2021-09-20) there are 8,525 events; those in the five test windows number 4,677.</p>
+
+<h3>3.2 Features</h3>
+<p>All features are computed with data available at the close of the re-entry bar; the context builder is truncated at that instant by construction, and an automated test verifies that no module reads the post-decision columns (<span class="mono">entry_ts</span>, <span class="mono">entry_price</span>). Features are symmetric between long and short (no “side” feature); a test mirrors a synthetic day and checks that the values are equal.</p>
+<ul>
+  <li><b>Version 1a — 15 core bar features</b>: value area type, minutes since the open, bars in the profile, open relative to the overnight value area, value area width in ATR, depth and duration of the excursion, position of the re-entry close, value area shift, presence in the other value area, stop distance in ATR, rr, volume slope in the excursion, volume at the extreme, volume of the re-entry bar; 11 exploratory features under forward selection.</li>
+  <li><b>Version 1b — order flow</b>: from tick trades, with “with” = aggressor in the direction of the break (sell for the long): <i>delta</i> of the excursion and of the re-entry (against − with volume, normalised), <i>absorption score</i> (share of with-volume in the 4-tick zone around the extreme), plus five exploratory ones (delta in the 3 minutes before the extreme, delta of the zone, share and delta of large trades above the 95th percentile, cumulative delta divergence).</li>
+  <li><b>Version 1c</b>: the 15 core features of 1a (arm A) and the same plus the 3 core order-flow features (arm B), without exploratory features; tick features are missing on non-sampled days and LightGBM handles them with the default split direction.</li>
+</ul>
+
+<h3>3.3 Model, calibration, offset</h3>
+<p>The classifier is binary LightGBM with monotone constraints on six features (among them rr decreasing, delta and absorption increasing), learning rate 0.03, feature fraction 0.7, grid over leaves {7, 15} × minimum observations per leaf {20, 50, 100}, early stopping at 100 rounds within 2,000, seed 0. In version 1a the validation set (last three months of training) serves both the grid and early stopping and the isotonic regression that calibrates the probabilities. The split into two temporal halves — first half for grid, selection and early stopping, second half for the calibrator alone — was introduced with 1b-S and applied to both paired runs (1a_S and 1b), with 96–127 and 93–112 events per half. In version 1c boosting starts from an <b>offset</b>: the initial function is not a constant but <i>a</i> · logit(<i>p</i><sub>rw</sub>) + <i>b</i>, with (<i>a</i>, <i>b</i>) estimated by logistic regression on the training data of each fold only (L2, the calibrated prior); there is no downstream calibrator and the whole validation set serves the grid and early stopping. An automated test verifies the nesting: with a single tree of zero contribution the model returns exactly L2.</p>
+<div class="eq"><span class="no">(1)</span><i>p</i><sub>rw</sub> = 1 / (1 + rr),&nbsp;&nbsp; rr = |target − <i>e</i>| / |<i>e</i> − stop|</div>
+<p class="small">where <i>e</i> is the close of the re-entry bar (<span class="mono">entry_ref_price</span>), the only price known at decision time; the backtest executes at the next open plus slippage.</p>
+<div class="eq"><span class="no">(2)</span><i>p</i><sub>1c</sub>(<i>x</i>) = σ( <i>F</i><sub>trees</sub>(<i>x</i>) + <i>a</i>·logit <i>p</i><sub>rw</sub> + <i>b</i> )</div>
+
+<h3>3.4 Decision, baselines, engine</h3>
+<p>An event is taken if the expected value in risk units exceeds a margin: EV<sub>R</sub> = <i>p</i>·rr − (1 − <i>p</i>) − costs<sub>R</sub> &gt; 0.1. The baselines are B0 (all events), C (threshold rules: volume slope &lt; 0 and re-entry volume &gt; 1 times the average; from 1b also excursion delta &gt; 0) and C-opt (thresholds optimised in-sample per fold, a non-executable upper bound). C is never used as a filter for the model. The engine trades one position at a time and discards duplicates.</p>
+
+<h3>3.5 Walk-forward, embargo, vault</h3>
+<p>Five consecutive six-month test windows (2023-10-02 → 2026-03-19), expanding training from 2021-09-20, one-day embargo, validation = last three months of training. The period 2026-03-20 → 2026-09-19 is a <b>vault</b>: never read in any milestone, reserved for a final verdict on request. The verdict of every milestone is on the aggregate of the five windows.</p>
+
+<h3>3.6 Statistics</h3>
+<p>95% confidence intervals are obtained by day-block bootstrap (10,000 resamples, seed 0): whole days are resampled with replacement, so as to respect the correlation between events of the same day. Comparisons between versions are <b>paired by event</b> on the same identifiers: for the Brier score the per-event difference (<i>p</i><sub>B</sub> − <i>y</i>)² − (<i>p</i><sub>A</sub> − <i>y</i>)² and its event-weighted mean are computed, with the same day bootstrap. The expected half-width of these intervals is about 0.0026 of Brier with 4,677 events and about 0.005 with 2,059: this is the detection limit of the design.</p>
+
+<h3>3.7 Pre-registration, criteria, ledger of looks</h3>
+<p>Before any out-of-sample result was observed, the following were written: the five classic criteria (mean R &gt; 0 with a CI excluding zero even at two ticks of slippage; superiority over B0, C and C-opt; positive sign of A − B0 in at least 4 windows out of 5; shuffle test in [0.45, 0.55] and Brier better than the context-only model; at least 300 trades), the paired criteria of 1b-S and the G1/P1/S1/G2 criteria of 1c with their declared power, the consequence trees and the forward-test primary. Every observation of the OOS is a row of <span class="mono">oos_looks.md</span> with the numbers copied from the report; the diagnostics done after the fact (rows 2-ter) are recorded as such, and the 1c design declares that it was chosen after seeing them.</p>
+
+<h2>4. Results</h2>
+<h3>4.1 Milestone 1a — bar features</h3>
+<p>On the 4,677 test events model A takes 591 trades with mean R 0.009 [−0.114, 0.135], profit factor 0.96, 14 negative months out of 30; at two ticks of slippage the mean R is −0.009. Criteria passed: 2 out of 5 (shuffle and number of trades). The finding that oriented what followed is in the Brier score: A 0.1820 (pooled), geometric prior 0.1820; AUC 0.7555 against 0.7569 for the prior. One-minute bars add no information beyond the stop/target geometry.</p>
+<figure>
+  <img src="fig/equity_1a.png" alt="Out-of-sample equity curve of milestone 1a: A, B0, C and C-opt over the five test windows">
+  <figcaption><b>Figure 1.</b> OOS equity of milestone 1a in risk units, by trade sequence number over the five consecutive test windows (the axis is trade order, not time). A (591 trades) is indistinguishable from B0 (all events); C-opt is an in-sample upper bound, not an executable strategy.</figcaption>
+</figure>
+
+<h3>4.2 Milestone 1b-S — order flow on sampled days</h3>
+<p>1a was re-run on the subset S of sampled days only (1a_S) and compared with 1b on the same 2,059 test events, same folds, same labels. Both runs use isotonic calibration on a separate validation half, pre-registered for 1b.</p>
+<div class="tbl"><table>
+<thead><tr><th>Window</th><th class="n">AUC 1a_S</th><th class="n">AUC 1b</th><th class="n">AUC prior</th><th class="n">Brier 1a_S</th><th class="n">Brier 1b</th><th class="n">Brier prior</th></tr></thead><tbody>
+<tr><td>2023-10 → 2024-03</td><td class="n">0.7428</td><td class="n">0.7121</td><td class="n">0.7672</td><td class="n">0.1902</td><td class="n">0.1965</td><td class="n">0.1825</td></tr>
+<tr><td>2024-04 → 2024-09</td><td class="n">0.7481</td><td class="n">0.7752</td><td class="n">0.7808</td><td class="n">0.1906</td><td class="n">0.1791</td><td class="n">0.1783</td></tr>
+<tr><td>2024-10 → 2025-03</td><td class="n">0.7582</td><td class="n">0.7489</td><td class="n">0.7893</td><td class="n">0.1905</td><td class="n">0.1994</td><td class="n">0.1709</td></tr>
+<tr><td>2025-04 → 2025-09</td><td class="n">0.7391</td><td class="n">0.7353</td><td class="n">0.7544</td><td class="n">0.1927</td><td class="n">0.2023</td><td class="n">0.1803</td></tr>
+<tr><td>2025-10 → 2026-03</td><td class="n">0.7447</td><td class="n">0.7425</td><td class="n">0.7497</td><td class="n">0.1731</td><td class="n">0.1774</td><td class="n">0.1760</td></tr>
+<tr><td><b>Pooled</b></td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n"><b>0.1881</b></td><td class="n"><b>0.1913</b></td><td class="n"><b>0.1777</b></td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 2.</b> By window, on the 2,059 events of S. The zero-parameter prior has a higher AUC than both models in all five windows and a lower Brier in four out of five (in the fifth 1a_S scores 0.1731 against 0.1760 for the prior).</p>
+<div class="tbl"><table>
+<thead><tr><th>Paired criterion</th><th>Statistic</th><th>Evidence</th><th>Outcome</th></tr></thead><tbody>
+<tr><td>(i) 1b beats 1a_S</td><td>per-event Brier, CI &lt; 0</td><td class="n">+0.0032 [−0.0019, +0.0084]</td><td><span class="chip fail">FAIL</span></td></tr>
+<tr><td>(ii) 1b beats the prior</td><td>per-event Brier, CI &lt; 0</td><td class="n">+0.0137 [+0.0076, +0.0196]</td><td><span class="chip fail">FAIL</span></td></tr>
+<tr><td>(iii) 1b returns more than 1a_S</td><td>mean R paired by day, CI &gt; 0</td><td class="n">+0.007 [−0.117, +0.130] (410 vs 453 trades)</td><td><span class="chip fail">FAIL</span></td></tr>
+<tr><td>(iv) sufficient trades</td><td>≥ 300 · share = 134</td><td class="n">410</td><td><span class="chip pass">PASS</span></td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 3.</b> Pre-registered paired criteria (specification §12-bis). The decisions of the two versions overlap little (Jaccard 0.418: 307 common trades, 240 only 1a_S, 188 only 1b) with the same return.</p>
+<p>The three core order-flow features are present in all folds by construction (they are core, they do not go through forward selection; among the exploratory tick features, <span class="mono">delta_at_extreme</span> enters in three folds, <span class="mono">large_trade_share</span> and <span class="mono">large_trade_delta</span> in one each) and did not help out of sample: in the SHAP plot of the last window they sit in the lower half of the 23 features, while rr dominates. The final review measured that 1a_S also loses against the prior with the same strength (+0.0105 [+0.0045, +0.0166]) and that about half of the gap is due to the isotonic calibrator estimated on 93–112 points per fold: the raw Brier before calibration is 0.1844 (1b) and 0.1803 (1a_S). Criterion (ii) is therefore true as written but is not evidence against order flow: it is evidence against calibration on little data. Under the pre-registered rule the remaining windows were not purchased.</p>
+<figure>
+  <img src="fig/shap_1b.png" alt="SHAP feature importance in milestone 1b, last window">
+  <figcaption><b>Figure 2.</b> SHAP importance (mean |value|) in the last window of 1b, 23 features. rr dominates; the three core order-flow features sit in the lower half of the ranking.</figcaption>
+</figure>
+
+<h3>4.3 Post hoc diagnostics (row 2-ter)</h3>
+<p>A three-member review council decomposed, on the already recorded predictions, Brier(<i>p</i>) − Brier(<i>p</i><sub>rw</sub>) = V − 2C with V = E[(<i>p</i> − <i>p</i><sub>rw</sub>)²] (how far the model departs from the prior) and C = E[(<i>p</i> − <i>p</i><sub>rw</sub>)(<i>y</i> − <i>p</i><sub>rw</sub>)] (how far the departures point in the right direction).</p>
+<div class="tbl"><table>
+<thead><tr><th>Prediction</th><th class="n">V</th><th class="n">C [95% CI]</th><th class="n">Brier − prior</th></tr></thead><tbody>
+<tr><td>full 1a (4,677 events)</td><td class="n">0.0103</td><td class="n">+0.0051 [+0.0038, +0.0065]</td><td class="n">−0.0000</td></tr>
+<tr><td>raw 1a_S (2,059)</td><td class="n">0.0112</td><td class="n">+0.0043 [+0.0020, +0.0065]</td><td class="n">+0.0026</td></tr>
+<tr><td>raw 1b (2,059)</td><td class="n">0.0153</td><td class="n">+0.0043 [+0.0017, +0.0068]</td><td class="n">+0.0067</td></tr>
+<tr><td>calibrated 1a_S / 1b</td><td class="n">0.0199 / 0.0228</td><td class="n">+0.0047 / +0.0046</td><td class="n">+0.0105 / +0.0137</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 4.</b> V − 2C decomposition. C is positive with an interval excluding zero everywhere: the departures from the prior are not pure noise, but they are worth about 0.002 of Brier. The increment due to the tick features has C = +0.0017 [−0.0001, +0.0035] and V +0.004: variance without covariance. Isotonic calibration doubles V without touching C.</p>
+<p>The prior itself is optimistic: mean <i>p</i><sub>rw</sub> 0.378 against a base rate of 0.338. Correcting the intercept alone is worth −0.0017 of Brier, and a two-parameter logistic on the prior alone brings it to 0.1801 against 0.1820. Measuring C against that calibrated prior instead of the raw prior, it falls from +0.0051 to +0.0031 (1a) and from +0.0043 to +0.0024 (1b): about 40–45% of what looked like signal is recalibration of the geometry, not new information. An ensemble of the two versions (0.1805 raw, 0.1855 calibrated) does not beat the prior (0.1777). These measurements determined the design of the next milestone and are declared as such.</p>
+
+<h3>4.4 Milestone 1c — calibrated-prior offset</h3>
+<p>The design responds to the two measured defects: the model starts from the calibrated prior L2 (estimated per fold on the training data only: <i>a</i> = 1.08–1.11, <i>b</i> = −0.06 – −0.12) and has no downstream calibrator. Arm A uses the 15 core features on all events; arm B adds the 3 order-flow features; an arm A′ with seed 1 serves only guard G2. The primary is on the full set of 4,677 events, the only one with power for an effect of 0.001–0.002 of Brier (declared power 20–50%; declared expectation ≥ 70% of failure).</p>
+<div class="tbl"><table>
+<thead><tr><th>Criterion</th><th>Statistic</th><th class="n">n</th><th>Evidence</th><th>Outcome</th></tr></thead><tbody>
+<tr><td>G1 validity</td><td>Brier(A) − Brier(L1 raw prior)</td><td class="n">4,677</td><td class="n">−0.0023 [−0.0041, −0.0005]</td><td><span class="chip pass">valid</span></td></tr>
+<tr><td><b>P1 primary</b></td><td>Brier(A) − Brier(L2 calibrated prior)</td><td class="n">4,677</td><td class="n">−0.0007 [−0.0023, +0.0010] · 99%: [−0.0028, +0.0015]</td><td><span class="chip fail">FAIL</span></td></tr>
+<tr><td>S1 secondary</td><td>Brier(B) − Brier(A) on S</td><td class="n">2,059</td><td class="n">−0.0003 [−0.0016, +0.0009]</td><td><span class="chip na">not read</span></td></tr>
+<tr><td>G2 union</td><td>median |<i>p</i><sub>B</sub> − <i>p</i><sub>A</sub>| outside S ≤ 2 × median |<i>p</i><sub>A</sub> − <i>p</i><sub>A′</sub>|</td><td class="n">2,618</td><td class="n">0.0100 ≤ 2 × 0.0079</td><td><span class="chip pass">PASS</span></td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 5.</b> Pre-registered criteria of 1c (specification §12-ter). Pooled Brier: L1 0.1820 · L2 0.1804 · A 0.1797; on S: A 0.1751, B 0.1748. By rule, S1 is read only if P1 is at least “candidate”.</p>
+<p>The pre-registered reading is: no detectable information beyond the calibrated geometry at this sample size; the declared falsifier (P1 estimate ≥ +0.0005) was not triggered; the forward test is not activated; L2 remains the reference model. The sanity check with shuffled labels, under the corrected null (see §5.3), gives mean AUCs of 0.475–0.523 per fold in both arms. Classic criterion 4, evaluated with the same paired bootstrap, gives Brier(A) − Brier(context-only) = +0.0011 [−0.0001, +0.0023]: even starting from the offset, the volume and geometry features do not beat the subset of context-only features, and are borderline worse. The five classic criteria give 1/5 for A and 1/5 for B. Descriptives: A takes 326 trades with mean R −0.122 [−0.267, +0.024], B 194 trades with −0.099 [−0.316, +0.133]; mean R B − A paired by day +0.023 [−0.160, +0.216]; Jaccard of A/B decisions 0.370, A/A′ 0.408. In the fourth window neither arm exceeds the expected-value margin: zero trades.</p>
+<figure>
+  <img src="fig/forest.png" alt="Forest plot of the seven paired Brier differences with 95 percent confidence intervals">
+  <figcaption><b>Figure 3.</b> All paired Brier differences in the work, with 95% CIs from the day bootstrap. Negative values favour the first term. In green the only comparison that excludes zero in favour of the model (A against the raw prior, which however includes the recalibration); in red the comparisons won by the reference; in grey those indistinguishable from zero, among them the primary P1 and the order-flow contrast.</figcaption>
+</figure>
+
+<figure>
+  <img src="fig/calibration_1c_A.png" alt="Reliability diagram of arm A of milestone 1c">
+  <figcaption><b>Figure 4.</b> Reliability diagram of arm A (1c), deciles of predicted probability against observed frequency on the 4,677 test events. The L2 offset brings the model onto the diagonal without a downstream calibrator.</figcaption>
+</figure>
+<figure>
+  <img src="fig/equity_1c_A.png" alt="Out-of-sample equity curve of arm A of milestone 1c">
+  <figcaption><b>Figure 5.</b> OOS equity of arm A (1c), in risk units, by trade sequence number (326 in total, against 591 for 1a): the axis is trade order, not time. With the offset the model takes fewer positions and the mean return after costs remains negative.</figcaption>
+</figure>
+<figure>
+  <img src="fig/shap_rr_1c_A.png" alt="SHAP dependence on rr in arm A of milestone 1c">
+  <figcaption><b>Figure 6.</b> SHAP dependence on rr in arm A (1c). With the prior already in the offset, the residual contribution of the trees on rr is monotone by constraint and small in absolute value (from +0.14 to −0.07 in logit) compared with the offset itself, which over the same rr range varies by about 1.5 logit.</figcaption>
+</figure>
+
+<h2>5. An artefact in the comparison metric</h2>
+<p>The three milestones compared the model with the geometric prior using, among others, a tool we here call the <b>wall test</b>: for a set of events one measures <i>g</i> = observed target frequency − mean of 1/(1 + rr). If <i>g</i> ≤ 0, no model can make that stop/target pair profitable, because selection can only choose among events whose average is already below the line.</p>
+<p>The test has a systematic defect. The probability 1/(1 + rr) is that of touching the target before the stop <b>with no time limit</b>; the detector, however, closes every open position at 15:55, and that close was labelled 0, i.e. as a full loss of 1 R. Measured on the 13,603 events of the training period: 8.1% of events end at the time stop, and those exits are worth on average <b>+0.605 R</b>. The error is not random: it is always in the same direction and grows with the expected absorption time, i.e. it selectively penalises wide-stop geometries — precisely those that looked worst in the screening.</p>
+<div class="tbl"><table>
+<thead><tr><th>quantity, value-area setup, training 2016-09 → 2023-09</th><th class="n">“time = −1” convention</th><th class="n">mark-to-market</th></tr></thead><tbody>
+<tr><td><i>g</i> (all events)</td><td class="n">−0.0327</td><td class="n">−0.0065 (on absorbed events only)</td></tr>
+<tr><td>EV without costs</td><td class="n">−0.1501 R</td><td class="n">−0.0195 R</td></tr>
+<tr><td>value assigned to a time-stop exit</td><td class="n">−1 R</td><td class="n">+0.605 R (measured)</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 6.</b> The size of the artefact. The conclusion “the setup lies below the random walk”, reported in version 1.1 of this report, depended entirely on the convention.</p>
+
+<h3>5.1 The correct form requires no nuisance parameters</h3>
+<p>A first possible correction is to build a finite-horizon prior, i.e. the probability of touching the target within <i>M</i> minutes under a random walk with volatility σ. It is correct in principle but introduces σ as a nuisance parameter, and the sensitivity is high (a 10% change in σ shifts <i>g</i> by about 0.005).</p>
+<p>The optional-stopping benchmark (Durrett, 2019) follows from the <b>optional stopping theorem</b>, under its integrability conditions. In a discrete-time integrable martingale and a bounded stopping time τ (here: the first of stop, target and 15:55 on the finite bar grid), E[<i>S</i><sub>τ</sub>] = <i>S</i><sub>0</sub>, i.e.</p>
+<div class="eq"><span class="tag">(3)</span>E[<i>R</i>] = 0&nbsp;&nbsp; for any bounded exit rule</div>
+<p>regardless of geometry, horizon and volatility, provided the return is valued <b>at the actual exit price</b> — including time-stop exits, valued at the 15:55 close. The test therefore becomes: measure the mean gross return per event and compare it with zero, with a day-block confidence interval. The statistical price is a larger variance (per-event standard deviation 1.60 against about 1.2 for the old statistic, hence intervals 30% wider); the gain is a test that does not lie.</p>
+<p>For <b>non-symmetric</b> strategies — those that always trade in the same direction — the null is not zero: under a martingale with drift μ, Wald's identity gives E[<i>R</i>] = <i>u</i>·μ·τ / <i>r</i><sub>unit</sub>. The drift must be estimated in a strictly retrospective way (252-session moving average of the segment, known before the event) so as not to use future information.</p>
+
+<h2>6. Re-measuring the setup</h2>
+<p>With the statistic of §5, on the training period (13,620 events, target filled only on a one-tick trade-through):</p>
+<div class="big">
+  <div><span class="v">−0.017</span><span class="k">gross EV, R per trade — CI [−0.049, +0.015], contains zero</span></div>
+  <div class="neg"><span class="v">−0.093</span><span class="k">mean R after commissions and slippage — CI [−0.126, −0.061]</span></div>
+  <div class="pos"><span class="v">+0.040</span><span class="k">gross EV in the nearest-target quintile — CI [+0.012, +0.069], p = 0.003</span></div>
+</div>
+<p>The setup is <b>not below</b> the random walk: it is above it, within the error. What makes it a loser is costs, which in risk units are worth about 0.75/<i>s</i>, with <i>s</i> the stop distance in points.</p>
+<h3>6.1 Drift or microstructure: the mirror test</h3>
+<p>A positive gross expected value can arise from two opposite mechanisms: an event-conditional <b>drift</b> (price tends to move in the direction of the trade) or a <b>symmetric</b> microstructure effect (the nearer barrier is touched more often than Brownian motion predicts, to the benefit of anyone who puts the target there). They are distinguished with a mirror test: the measurement is repeated on a fictitious trade with the <i>same</i> entry, the opposite side and the <i>same</i> distances.</p>
+<div class="eq"><span class="tag">(4)</span>microstructure = (EV<sub>orig</sub> + EV<sub>mirror</sub>) / 2&nbsp;&nbsp;·&nbsp;&nbsp; drift = (EV<sub>orig</sub> − EV<sub>mirror</sub>) / 2</div>
+<p>On the 3,914 events of the near-target band: original <b>+0.0381 [+0.0119, +0.0640]</b>, mirror <b>−0.0238 [−0.0503, +0.0017]</b>, hence microstructure +0.007 and <b>drift +0.031 R</b>. An independent replication with a second implementation gives drift +0.0378 [+0.0119, +0.0630] and microstructure +0.0019 [−0.0094, +0.0132]: the separation is clear-cut, the effect is directional.</p>
+<h3>6.2 The mechanism: excursion depth</h3>
+<p>The expected value is not uniform: it grows monotonically with the <b>depth of the excursion</b> preceding the re-entry.</p>
+<div class="tbl"><table>
+<thead><tr><th>depth quintile (in ATR)</th><th class="n">n</th><th class="n">gross EV, points</th><th class="n">gross EV, R</th><th class="n">median rr</th></tr></thead><tbody>
+<tr><td>shallowest</td><td class="n">2,721</td><td class="n">−0.91</td><td class="n">−0.070</td><td class="n">4.90</td></tr>
+<tr><td>2nd</td><td class="n">2,720</td><td class="n">−0.25</td><td class="n">−0.013</td><td class="n">2.82</td></tr>
+<tr><td>3rd</td><td class="n">2,722</td><td class="n">+0.31</td><td class="n">+0.003</td><td class="n">1.75</td></tr>
+<tr><td>4th</td><td class="n">2,719</td><td class="n">+0.74</td><td class="n">+0.001</td><td class="n">1.19</td></tr>
+<tr><td>deepest</td><td class="n">2,721</td><td class="n">+2.05</td><td class="n">+0.024</td><td class="n">1.20</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 7.</b> <b>Post hoc</b> measurement, not pre-registered. The correlation between rr and depth is −0.07: they are two nearly independent gradients, not the same one in disguise.</p>
+<p>A reading compatible with this shape adds two forces: a <b>continuation of the break</b> (against the trade, of roughly constant size) and a <b>return towards the value area proportional to the displacement</b> (in favour of the trade). The net drift is then about κ·depth − <i>m</i>, negative below a threshold and increasing beyond it: a deep break that fails is an exhausted break, a shallow one that re-enters is a break on pause. The strongest cell of the grid (high depth × medium rr) gives +0.090 R [+0.019, +0.159], but it is one of fifteen cells chosen after looking: it is a hypothesis to pre-register, not a result.</p>
+
+<h2>7. Screening nine setups with the correct tool</h2>
+<p>To check whether the problem was the specific setup or the class of strategies, nine intraday setups were defined, pre-registered and measured on the training period only with the statistic of §5: 15-minute opening range breakout, opening gap (fill and continuation), first-hour extremes, value area continuation, return to VWAP from 2σ, overnight hold, last-hour momentum, open outside the previous day's value area, plus the original setup. In total <b>53 confirmatory tests</b> (plus 5 exploratory strata), with Benjamini-Hochberg false discovery rate control at q = 0.10, one-sided p, and a mandatory mirror test on every geometry.</p>
+<div class="key">
+<p><b>No discovery.</b> The lowest p is 0.0108, against a rank-1 threshold of 0.0019. The line of work is closed according to the condition set before observing the results.</p>
+</div>
+<p>Two observations are of general value. <b>First</b>: with the correct statistic the majority of geometries go from negative to positive (first hour 8 out of 8, value area continuation 7 out of 8, opening range 5 out of 8), but the count of signs does not exceed chance — with an internal correlation ≈ 0.75 between the geometries of the same candidate, “eight out of eight” is one coin toss repeated eight times, not eight independent tosses; the effectively independent trials are about 16, not 53. A table centred on zero <i>looks</i> more positive than one systematically shifted, without containing more.</p>
+<p><b>Second</b>: the apparently best candidate was the overnight hold, with four geometries out of four “discovered” and net return up to +0.107 R. It is an artefact of the null. The wall test assumes zero drift; a <b>long-only</b> strategy on an index that rose 19% a year over the period beats it by construction. The return decomposition confirms it: overnight +10.5% a year against intraday +8.5% — overnight captures 54.6% of the rise, not nearly all of it as in the anomaly documented in the literature — and in the sub-period 2021-10 → 2023-09 the sign reverses (Sharpe −0.43 against +0.47). With the Wald null corrected for the measured drift: <b>zero geometries out of four, p = 1.000</b>. The wall test is valid only for long/short symmetric setups, where the drift cancels out.</p>
+
+<h2>8. Discussion</h2>
+<h3>8.1 Power and effect size</h3>
+<p>The result has a precise shape. Recalibrating the prior alone is worth 0.0016 of Brier with two parameters (L1 0.1820 → L2 0.1804): the raw prior is systematically optimistic and a logistic corrects it. G1 measures the sum of calibration and trees (−0.0023 [−0.0041, −0.0005]) and is therefore a validity check, not proof of skill. P1 isolates the contribution of the trees starting from the calibrated prior: estimate −0.0007, interval [−0.0023, +0.0010] — compatible with both a small gain and a small loss. Since the half-width of the paired difference is about 0.0026 (4,677 events) and 0.005 (2,059), no design on these data could detect an effect of the measured size: the honest conclusion is not “there is no information” but “there is no information detectable at this sample size”, and the pre-registered hypothesis predicted this outcome with probability ≥ 70%.</p>
+<h3>8.2 The role of calibration</h3>
+<p>The most relevant defect found along the way is not in the features but in the procedure: an isotonic calibration on about 100 points per fold doubles the variance of the probabilities without improving their direction (Table 4). The order of magnitude of the damage (0.007–0.008 of Brier) is ten times larger than the effect the features could bring. 1c removes the calibrator and estimates the calibration on the 3,300–7,250 training events through the offset: it is the correct choice for problems with few events, and the only one that makes the comparison with the prior fair.</p>
+<h3>8.3 Design defects: two corrected before execution, one after, two in the exploratory measurements</h3>
+<p>The third defect, described in §5, was found <b>after</b> the publication of version 1.1 of this report and required a complete re-measurement: the comparison tool was biased by construction. It must be said without mitigation: for three milestones a central conclusion was formulated with a wrong metric, and none of the pre-registered checks could detect it, because the defect lay in the comparison itself and not in the pipeline. This is why §10 of this report is an explicit retraction and not a footnote. The other two defects were intercepted before the results were read. (a) The clause requiring the per-event paired bootstrap for the comparison with the context-only model had been pre-registered since 21 September, before the execution of 1b; the first report, however, evaluated it by window average, and some static sentences inherited from 1a contradicted the numbers. The final review detected this and the correct computation was added in a declared re-render — hence after look 2, not before (look 2-bis): the verdicts did not change, the evidence did. (b) In 1c the shuffled-label test was defined with a fixed offset estimated on the true labels: trees trained on random labels learn to cancel the offset and their score becomes anticorrelated with the true label (on synthetic data mean AUC 0.19; on real data 0.22–0.27). The null was redefined with L2 refitted on the shuffled labels, and the amendment was committed before execution; the original variant is nevertheless reported. A check that can fail by construction checks nothing.</p>
+<h3>8.4 What it means for those who want to trade</h3>
+<p>With the correct metric the operational picture changes in the details but not in substance. There is a measurable drift of about 2 points in the direction of the re-entry, concentrated in deep excursions, which decays quickly: +0.036 R entering at the open of the next bar, +0.023 with a one-minute delay (−35%), +0.009 with two (−76%). It is not a reading of the market, it is a reaction advantage; a human operator who takes half a minute has already lost half of it, and costs absorb the rest. It should also be noted that the economic verdict depends on the unit of measurement: the mean return in R (which weights each event by 1/<i>s</i> and presupposes constant-risk sizing) is +0.003 with an interval containing zero, whereas in dollars at a fixed contract size it is +30 per trade with an interval excluding it. On the setups as the mechanical detector finds them, the best predictor of the outcome remains the calibrated geometry of the trade; the mean return after costs of the trades chosen by the model is negative or indistinguishable from zero in every look (1a: 0.009 [−0.114, 0.135]; 1c: −0.122 [−0.267, +0.024]); the decision rule changes about half of the trades when the seed changes. There is no demonstrated edge and the pre-registered forward test is not activated. The judgement concerns the mechanised setup: the trader's discretionary component — which break “counts”, when absorption is convincing — is not encoded by the detector, and might contain the information that is missing here; but as long as it is not measurable it is not verifiable.</p>
+<h3>8.5 Limitations</h3>
+<ul>
+  <li>A single instrument and a single setup; the conclusions do not extend to other markets.</li>
+  <li>The tick sample covers 44.5% of days: the order-flow contrast has 10–25% power, declared and not avoidable without purchasing data.</li>
+  <li>Assumed costs (one tick per side, limit target) are plausible but not measured on real executions; the stress at two and three ticks is reported in the reports.</li>
+  <li>The diagnostics of row 2-ter were computed on the same out-of-sample data: the 1c design is informed by them, and this is why any positive outcome of it would have been read as a “candidate” pending replication.</li>
+  <li>The day-block CIs include, in the runs on the sample, days with no possible trades; the review verified that the endpoints move by ≤ 0.003 as the day grid varies.</li>
+  <li><b>Multiplicity</b>: three looks at the working OOS were taken plus two declared re-renders, and the 1c design was chosen among about five alternatives discussed. The protocol addresses this partially — 1c reads the outcome at 95% as “candidate” and only at 99% as “confirmed”, and every candidate would require a replication on never-seen data — but no formal correction for multiple comparisons is applied to the criteria of the earlier milestones.</li>
+  <li><b>Review</b>: the checks described in §5.3 were performed by independent sessions of the same system that wrote the code, not by external human reviewers: they are effective against implementation and design errors, they are not a guarantee of independence. The final review of §11, by contrast, was conducted with a model that <b>never saw the code or the data</b> and worked on the descriptions of the procedures alone, with the author as intermediary. This configuration proved the most effective of the work — it identified both false positives before the numbers — but it remains a review between models, not peer review.</li>
+  <li><b>Multiplicity of the exploratory measurements</b>: §11 contains a grid of 49 geometries × 2 panels and four successive diagnostic measurements. None of them is confirmatory and none enters a multiplicity-corrected family of tests; they are reported because they document how two positive results fell, not because they establish anything.</li>
+</ul>
+
+<h2>9. Conclusion of Part I</h2>
+<p class="note">Written for version 3.0. The general conclusion, which includes the laboratory and the closing of the vault, is in §18.</p>
+<div class="key">
+<p>Three pre-registered milestones find in the NQ value area setup no exploitable information beyond the calibrated geometric probability, and a screening of nine intraday setups with the correct tool produces no discovery in 53 tests. But the most useful conclusion of this work is not about markets: it is about measurement. A single labelling convention — assigning −1 R to time-stop exits — was enough to shift the expected value by 0.13 R per trade and to make a setup that lies above the random walk appear below it. The correct form follows from an elementary theorem (optional stopping) and requires no parameters; the mirror test separates drift and microstructure with two measurements; the Wald null avoids mistaking the rise of an index for skill. These three tools apply to any strategy with a time-based exit and are the main contribution of the work.</p>
+<p>As for the author's setup, the conclusion of version 2.0 — “it contains a true direction of about 2 points, which costs almost entirely cancel” — <b>does not survive</b> the checks of §11. The fixed-horizon test, which uses neither stop nor target and therefore does not depend on any fill convention, gives intervals containing zero at 5, 15, 30, 60 minutes and at the close, in two non-overlapping periods. The setup <b>is not statistically distinguished from the specified same-session, same-side control</b> at the tested horizons. These intervals do not prove a precisely zero effect and do not exclude effects below the design's detection limit.</p>
+<p>The later exploratory session produced two apparently positive results that were invalidated by sample-construction defects (§11). Together with the time-stop correction and the drift-adjusted null, these examples show why a positive estimate must be checked against the data-generating and selection procedure. Low power alone does not establish that a positive result is a defect.</p>
+<p><b>Status of the later Part I branches.</b> Their proposed confirmation was not executed after the stopping conditions were met. The 2023-2026 period had already been evaluated in the earlier milestones, as explained in Research chronology. The proposed branch-specific confirmation had estimated power 0.54 against the full exploratory effect and 0.08 against half that effect. Future hypotheses require a specified test, disclosure of all prior data exposure, and a power calculation before any new evaluation.</p>
+</div>
+<p>The code, the reports and the ledger make it possible to reproduce every figure from the same data; the vault remains closed under the final laboratory protocol (2026-03-20 to 2026-09-30). Any future hypothesis requires by rule a pre-registration written before execution, and already has the bar (L2), the test (paired P1) and the expected power.</p>
+
+<h2>10. Errata with respect to version 1.1</h2>
+<p>Version 1.1 of this report, published on 22 September 2026, contained statements that the re-measurement of §5–§7 has refuted. They are listed here in full, as retraction practice requires.</p>
+<ul>
+  <li><b>Retracted</b>: “the expected value without costs is negative in all five rr bands” (§4.3 and row 3-ter of the ledger). It was computed by assigning −1 R to time-stop exits. With mark-to-market valuation, the overall gross EV is −0.017 R with an interval that <b>contains zero</b>, and in the near-target quintile it is positive.</li>
+  <li><b>Retracted</b>: the reading “the setup lies below the random-walk wall”. The correct formulation is: it lies above it within the error, and it is costs that make it a loser.</li>
+  <li><b>Corrected</b>: the conclusion “no model showed information beyond the geometry” remains valid for the models, but must be placed alongside the fact that <b>the data contain</b> a conditional drift of +0.031 R in the near-target band, which the Brier-based criterion could not detect (it shifts the probability by 0.03 on a prior of 0.65).</li>
+  <li><b>Unchanged</b>: all pre-registered criteria of the three milestones and their outcomes; no verdict was reopened. The intervals and counts of Tables 2–5 do not change: they were computed on Brier scores and realised returns, not on the defective metric.</li>
+</ul>
+<p>Version 1.1 remains available in the document history. No number has been deleted: the wrong ones are marked as such.</p>
+<h3>10-bis. Errata with respect to version 2.0</h3>
+<ul>
+  <li><b>Retracted</b>: “the setup contains a true direction of about 2 points which costs cancel”. The fixed-horizon test of §11.3, which does not depend on fill conventions, gives intervals containing zero at all five horizons in both periods.</li>
+  <li><b>Retracted</b>: “the setup is worth +0.065 ATR of timing compared with a random entry”. The control group used future information to choose the side; with the defect corrected, the difference is <b>+0.0008 ATR</b> (§11.3).</li>
+  <li><b>Retracted</b>: “immediate entry on the break returns +0.149 ATR at 60 minutes, consistently across the two periods”. The sample was weighted by the number of daily re-entries, i.e. selected on the outcome; on the declared population it is worth <b>−0.066</b> and <b>+0.020</b>, with opposite signs (§11.4).</li>
+  <li><b>Retracted</b>: the reading according to which the geometry surface would show large excursions more likely than under a random walk. The measured variance ratio is <b>below one</b> (0.93–0.97): mean reversion, not momentum (§11.2).</li>
+  <li><b>Unchanged</b>: all pre-registered criteria and their outcomes; the results of §4–§7. The measurements of §11 are exploratory and do not modify any confirmatory verdict.</li>
+</ul>
+
+<h2>11. Geometries, placebos, and two false positives</h2>
+<p>Once the screening was closed, three questions remained: whether a geometry different from the one used by the trader would change the outcome; whether the entry moment chosen by the setup was worth anything compared with an arbitrary entry; and whether the phenomenon sought existed at all. The measurements that follow produced <b>two positive results, both later found to be false</b>. The path is reported in full because it is the most instructive part of the work: both errors were identified not by looking at the results, but by asking how the measurements were built.</p>
+<p>All measurements in this section are <b>exploratory and declared as such before execution</b>: no confirmatory claim, no family of tests, no candidate authorised to advance. The proposed branch-specific confirmation was not executed; the same calendar dates had already been evaluated in the earlier milestones.</p>
+<h3>11.1 The geometry surface</h3>
+<p>For an integrable martingale on the finite discrete-time grid, optional stopping gives zero expected gross mark-to-market return for bounded stop/target/time-exit rules. A fine map of the surface therefore answers a physical question: where the market deviates from the martingale. Stop and target were expressed in multiples of the ATR(14) on 5m bars of the previous day — {0.25 · 0.5 · 0.75 · 1 · 1.5 · 2 · 3} per side, 49 cells — on two non-overlapping historical panels: the training 2016-09-20 → 2023-09-30 (13,620 events, 1,755 days) and the extension 2010-06-07 → 2016-09-19 (12,031 events, 1,551 days).</p>
+<p>The surface is <b>negative in 49 cells out of 49</b> in the recent panel and in 44 out of 49 in the older one. No geometry in the grid makes the setup positive. A fine grid guarantees some false positives by construction, which is why nothing that follows can be promoted; but the total absence of positive cells does not require that caution.</p>
+
+<h3>11.2 What the diagonal test showed, and what it did not</h3>
+<p>On the diagonal (stop = target = <i>d</i>) the trade and its mirror share almost the same two price levels, so their outcomes should be opposite event by event and the common component — the average of the two, which we call <span class="mono">micro</span> — should be zero. It is not zero, and the decomposition says exactly why. Under the pre-registered conventions, the stop of one side triggers <b>one tick before</b> the target of the other, because the target requires a 1-tick trade-through while the stop fills on touch. There is therefore a one-tick band in which <b>both sides lose</b>.</p>
+<p>The categories are exhaustive and two of them must contribute <i>exactly</i> zero: “both trades exit at the time stop” and “one wins, the other loses”. Measured: <b>residual +0.00·10<sup>0</sup> in all 28 diagonal cells</b> (7 values of <i>d</i> × 2 tie conventions × 2 panels). There is no asymmetry in the computation engine. All of the diagonal <span class="mono">micro</span> lies in the two remaining mechanical categories, and the closed-form prediction −<i>d</i> × (share of events in which both lose) reproduces the measurement to four or five decimal places: in the 2016-2023 panel with <i>d</i> = 0.25 ATR the share is 9.52% and the prediction −0.02380 against <b>−0.02379</b> observed; in the 2010-2016 panel, 11.10% and −0.02775 against <b>−0.02774</b>.</p>
+<div class="key"><p><b>What this allows us to say.</b> On the diagonal, <span class="mono">micro</span> is <b>entirely due to the fill rules</b>: the 1-tick trade-through on the target and the convention that assigns to the stop the bars in which both levels are touched. <b>Off the diagonal the decomposition was not performed</b>, and this work does not claim what produces the surface there. A collateral fact is however available: <span class="mono">micro</span> is side-invariant by construction — swapping the trade with its mirror leaves it identical — so the measurement on entries taken at random in the same session, which gives practically equal values (−0.0350 against −0.0363 in the older panel, −0.0155 against −0.0170 in the recent one), says that the surface <b>does not depend on the setup</b>, without saying what it is made of.</p></div>
+<p>In the same measurement the variance ratio of non-overlapping one-minute log returns within the session was computed. It is <b>0.966 · 0.971 · 0.966 · 0.966</b> at 5/15/30/60 minutes in the 2010-2016 panel and <b>1.010 · 0.958 · 0.935 · 0.928</b> in the 2016-2023 one: below one almost everywhere, i.e. mean reversion and not momentum.</p>
+
+<h3>11.3 First false positive: the side chosen knowing the future</h3>
+<p>To estimate how much the <i>instant</i> chosen by the setup is worth, the true entries were compared with entries taken at random in the same session, on the same side and with the same distances. The comparison gave <b>+0.065 ATR</b> in favour of the setup, and was reported as a measure of its timing contribution.</p>
+<p>The review identified the defect from the description of the procedure alone, before seeing any number: the placebo <b>copied the side decided at the time of the signal</b> and applied it also to instants <i>before</i> the signal. The setup's side depends on which edge of the value area price has broken; applying it earlier means using future information. In addition the sample was conditioned on survival, because only the excursions that later re-entered exist.</p>
+<p>The check split the ±60-minute placebo into two halves. Before the signal: <b>−0.1318</b> (2010-2016) and <b>−0.1288</b> (2016-2023). After the signal, where the side anticipates nothing: <b>−0.0082</b> and <b>−0.0064</b>, against a setup at <b>−0.0061</b> and <b>−0.0056</b>. <b>The difference between the setup and a random entry free of look-ahead is +0.0021 and +0.0008 ATR.</b> The whole “+0.065” lay in the half that looked into the future.</p>
+<p>A test without barriers settled the question. Fixed-horizon returns in the direction of the trade, in ATR units, with no stop or target: the setup is worth −0.005 · −0.006 · −0.022 · −0.027 · −0.106 at 5, 15, 30, 60 minutes and at the close in the recent panel, and −0.004 · −0.005 · −0.004 · −0.012 · +0.024 in the older one, with <b>confidence intervals containing zero at all five horizons in both periods</b>. The setup does not separate from an arbitrary entry at any time scale.</p>
+
+<h3>11.4 Second false positive: a sample selected on the outcome</h3>
+<p>The control group built for the previous test — called B2, entry as soon as a 5-minute close leaves the value area, side towards the value area, decided with only the data available at that instant — was designed to be worth zero. Instead it measured <b>+0.1486 ATR at 60 minutes</b> in training and <b>+0.1531</b> in the extension, with intervals excluding zero and an agreement between the two periods that looked like the most solid fact of the entire session.</p>
+<p>Before any further measurement, a duplication check showed that <b>100.0% of the 5,573 events of the “value area continuation” candidate</b>, already screened in §7, are contained in B2 with the side reversed — by construction, because that candidate trades in the direction of the break and B2 in the opposite one. A contradiction followed: on the common events the two are mirror images and cannot both be positive.</p>
+<p>The contradiction was resolved not by measuring, but by checking how the sample was built. B2 had not been measured on the declared population: the code sampled <span class="mono">3 × (number of value-area events of that day)</span> candidates per day. It is a weighting that gives ten times more weight to days with many re-entries — i.e. to days on which price leaves the value area and comes back, which are exactly the days on which a trade towards the value area makes money. <b>The sample was selected on the outcome it was supposed to measure.</b></p>
+<div class="tbl"><table>
+<thead><tr><th>Population (gross at 60 minutes, ATR units)</th><th>2016–2023</th><th>2010–2016</th></tr></thead><tbody>
+<tr><td><b>A</b> — proxy: 3 × events of the day, first bar included (seeds 1/2/3)</td><td>+0.1867 / +0.1782 / +0.1961</td><td>+0.2121 / +0.2175 / +0.2136</td></tr>
+<tr><td><b>B</b> — all candidates, unweighted, first bar included</td><td>−0.0637 [−0.1260, −0.0004]</td><td>+0.0048 [−0.0586, +0.0688]</td></tr>
+<tr><td><b>C</b> — declared population: all, first bar excluded</td><td><b>−0.0662 [−0.1368, +0.0029]</b></td><td><b>+0.0195 [−0.0500, +0.0896]</b></td></tr>
+<tr><td><b>D</b> — only the first bars of each break (the removed part)</td><td>−0.0528 [−0.1161, +0.0090]</td><td>−0.0583 [−0.1185, +0.0017]</td></tr>
+<tr><td>events in <b>B</b> / days</td><td>88,597 / 1,755</td><td>79,037 / 1,552</td></tr>
+</tbody></table><div class="cap">Table 11.1 — Step-by-step decomposition from the weighted sample to the declared population. 95% day-block intervals, 10,000 resamples. The arithmetic check (C·n<sub>C</sub> + D·n<sub>D</sub>)/(n<sub>C</sub>+n<sub>D</sub>) reproduces B to six decimal places in both panels. The three independent seeds agree: the proxy was not a lucky draw, it was the sampling rule.</div></div>
+<p>With the weighting removed, the result goes from <b>+0.19 to −0.064</b> in the recent panel: a gap of 0.25 ATR produced by the weighting alone, with identical triggers. On the declared population the value is <b>−0.0662</b> in training and <b>+0.0195</b> in the extension, with intervals containing zero and <b>opposite signs between the two periods</b>. The three stopping conditions written in advance — deviation of more than 30% from the expected value, non-positive training, discordant periods — were all three triggered. The line of work was closed without purchasing the planned confirmation data.</p>
+<p>The contradiction with the already screened candidate resolves itself. Row <b>D</b> measures the excluded part, i.e. the first bar of each break: it is worth −0.053 and −0.058 in the direction of the value area, hence <b>+0.05 ATR in the direction of the break</b>, consistently in both panels. It is a <b>post hoc diagnostic on a candidate already tested and not found to be a discovery</b> under false discovery rate control (§7), and it is not promoted to anything. It is nonetheless worth noting how small it is in operational terms: 0.05 ATR is about <b>0.8 points</b> at the average ATR of the recent period, against <b>0.75 points</b> of costs between commissions and one-tick-per-side slippage. Even if it were true, <b>the net is about zero</b>.</p>
+
+<h3>11.5 Who found what</h3>
+<p>The two false positives were identified by an <b>review in a separate AI-model session</b> (Claude, in a separate conversation), whose objections were relayed by the author to the working session. The division of roles was constant and is worth making explicit, because it is the reason the errors emerged: <b>the working session built, the reviewer checked, the author decided.</b></p>
+<p>The reviewer never had access to the code or the data. In both cases it identified the defect from the <i>description of the procedure</i> alone, before seeing the numbers, and set down in writing the decision rules before the measurements were run — including, in the second case, the correct prediction of what would happen when the weighting was removed. Decisions on what to measure, what to buy and when to stop remained with the author.</p>
+<p>The useful generalisation concerns not the models but the type of question. Neither error would have emerged by examining the results: both were plausible, with narrow intervals consistent across independent periods. They emerged from questions about the <b>construction of the measurement</b> — how the placebo's side is chosen, how many events per day enter the sample. In a regime where the effect sought is smaller than the standard error, a positive result is more likely a measurement defect than a phenomenon: the appropriate reaction is not confirmation, it is the search for the defect.</p>
+
+<div class="part">Part II — The open laboratory and the derived tools (version 4.0)</div>
+
+<h2>12. From the setup to the laboratory: the design</h2>
+<p>Once Part I was closed, the question was deliberately broadened: <b>“try anything, until you find something real”</b>. This is the design that produces guaranteed false positives — with enough attempts something always passes — and for this reason freedom was given to exploration, while credibility was placed entirely in the <b>judgement</b>. Five rules, all enforced by the code and not by good will:</p>
+<ol>
+  <li><b>Three time blocks with a guard in the code</b> (<span class="mono">lab/core.py</span>, the only gateway to the data). Discovery is free; validation and confirmation are accessible only to a controller, once per frozen candidate; the vault cannot be loaded by any phase.</li>
+  <li><b>Ledger of every test looked at</b> (<span class="mono">lab/ledger/</span>), including failures and exploratory ones: the number of attempts is part of the result.</li>
+  <li><b>Criteria fixed and committed before</b> every validation. A “tradeable” strategy must have positive net EV (0.75 points round trip) with one-sided p &lt; 0.05/K from the day-block bootstrap; positive net EV minus beta with the same threshold; positive sign in the majority of years; positive sign without the 20 best trades. “Regularities” have a two-sided test on the gross, with a declared expected sign.</li>
+  <li><b>Calibration against chance.</b> 1,266 meaningless placebo rules (moon phases, random times) were passed through the same criteria. They uncovered a hole: 11% of the “long at night” placebos passed everything, because the beta criterion asked only for the sign. It was corrected (amendment 1) <b>before</b> any validation; after the correction, 0 placebos out of 300.</li>
+  <li><b>Mechanical look-ahead audit</b> on every candidate: the future after an instant T is altered and one checks that no trade decided before T changes. The first audit did not catch a deliberately planted trick; it was strengthened until it did.</li>
+</ol>
+<div class="tbl"><table>
+<thead><tr><th>Block</th><th>Period</th><th>Who uses it</th></tr></thead><tbody>
+<tr><td>Discovery</td><td>2010-06-07 → 2018-12-31</td><td>family agents, freely</td></tr>
+<tr><td>Validation</td><td>2019-01-01 → 2023-09-30</td><td>the controller only, once per candidate</td></tr>
+<tr><td>Confirmation</td><td>2023-10-01 → 2026-03-19</td><td>the controller only, once, on the survivors</td></tr>
+<tr><td>Vault</td><td>2026-03-20 → 2026-09-30</td><td>nobody; closed on 2026-10-07, never opened</td></tr>
+<tr><td>Forward test</td><td>from 2026-10-01</td><td>pre-registered tests only, each from its own date</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 12.1.</b> Time blocks of the laboratory. Costs: $2.50 per side plus one tick per side, 0.75 points round trip; NQ is worth $20 per point. Returns spanning the night use roll-adjusted prices with the exact dates of the Databento symbology.</p>
+
+<h2>13. The outcomes, round by round</h2>
+<div class="tbl"><table>
+<thead><tr><th>Round</th><th>Content</th><th class="n">Fam.</th><th class="n">Tests</th><th>Candidates</th><th>Validated</th><th>Confirmed</th></tr></thead><tbody>
+<tr><td>1</td><td>open ideas (calendar, micro, sessions, volatility, ML…)</td><td class="n">8</td><td class="n">2,699</td><td>13 (5 strategies, 8 regularities)</td><td>3 regularities</td><td><b>2 regularities</b></td></tr>
+<tr><td>2</td><td>range, costs, execution, analogues, automated search, footprints</td><td class="n">6</td><td class="n">~1,600 + 480,181 rules</td><td>5 (1 strategy, 4 regularities)</td><td>1 strategy, 2 regularities</td><td>0</td></tr>
+<tr><td>3</td><td>adaptive rule selection</td><td class="n">1</td><td class="n">255 + ~70,000 placebo pipelines</td><td>0</td><td>—</td><td>—</td></tr>
+<tr><td>4</td><td>free external data (VXN, VIX, VVIX, SKEW, rates, dollar)</td><td class="n">2</td><td class="n">378</td><td>2 regularities</td><td>0</td><td>—</td></tr>
+<tr><td>5</td><td>an ICT/AMD model taken from a video</td><td class="n">1</td><td class="n">49</td><td>0</td><td>—</td><td>—</td></tr>
+<tr><td>6</td><td>four external hypotheses (gamma, community statistics, Noise Area, Silver Bullet)</td><td class="n">4</td><td class="n">13 primary</td><td>0</td><td>—</td><td>—</td></tr>
+<tr><td>7</td><td>machine learning on volatility; volatility versus options</td><td class="n">2</td><td class="n">2 primary + 2 not run</td><td>0</td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 13.1.</b> Seven rounds, 24 families. Each family delivers at most three frozen candidates; validation corrects for the number of candidates in the round (Bonferroni), confirmation for the number of survivors. Details in <span class="mono">lab/PROTOCOLLO.md</span> and in the reports <span class="mono">lab/&lt;famiglia&gt;/REPORT.md</span>.</p>
+
+<h2>14. What is real, and what seemed to be</h2>
+<h3>14.1 Two volatility regularities, confirmed on three blocks</h3>
+<ul>
+  <li><b>Tomorrow's volatility is predictable.</b> A HAR on the log of RTH realized variance beats the 22-day average by +0.182 (2010-18), +0.214 (2019-23) and +0.175 (2023-26), p ≈ 0.0001 in every block; out-of-sample R² about 0.62 against 0.40.</li>
+  <li><b>A turbulent night anticipates a turbulent day.</b> The 18:00-09:30 range predicts the RTH range even holding yesterday constant: +0.147, +0.121, +0.164, p ≈ 0.0001 everywhere, positive in 9 years out of 9 in discovery.</li>
+</ul>
+<p>The two regularities keep their size from one block to the next (ratio between blocks 0.8-1.2). They are known in the literature and say <i>how much</i> price will move, not <i>where</i>: with the future alone they cannot be cashed in.</p>
+<h3>14.2 What seemed real</h3>
+<ul>
+  <li><b>Breakout of the forecast volatility bands</b> (round 2): +3.1 net points in discovery, then <b>+12.1</b> in validation with all criteria passed, positive in 5 years out of 5 and robust to tripled costs — the first “trading” candidate to pass a validation. In confirmation: <b>−2.6</b>. §15 shows what that number can and cannot say.</li>
+  <li><b>RTH direction continuing between 16:15 and 17:00</b>: passes validation (+1.70 gross points, p 0.001); in confirmation same sign, not significant.</li>
+  <li><b>Footprint of slicing algorithms</b> (:00, :15, :30, :45): 0.062 → 0.024 → 0.010 from one block to the next. An inefficiency that the market is eliminating.</li>
+  <li>Turnaround Tuesday, 10-day reversal, month-end rebalancing: brilliant in the bullish 2010-18 discovery, destroyed from 2022.</li>
+</ul>
+<h3>14.3 Four facts measured, not believed</h3>
+<ol>
+  <li><b>The space of simple intraday rules is empty at these costs.</b> Over 480,181 rules the best real t (4.18) is indistinguishable from the best t of 700 placebo worlds (median 4.01; corrected p 0.31).</li>
+  <li><b>Limit orders do not rescue the signals.</b> With fills only on a one-tick trade-through, adverse selection eats the saved spread: one gets filled when the signal is wrong, and the missed trades were worth from +4 to +17 points.</li>
+  <li><b>There is no persistence in which rule works.</b> The recent performance of 374 rules does not predict that of the following month (p 0.10 against the corrected placebo).</li>
+  <li><b>The winner's curse, in numbers.</b> Effects found by digging shrink to 0.35-0.7 times as soon as they leave the sample in which they were chosen; true regularities stay between 0.8 and 1.2.</li>
+</ol>
+
+<h2>15. Power: what a negative outcome rules out</h2>
+<p>A FAIL verdict says that an effect was not <i>demonstrated</i>, not that it does not exist. For every verdict of the controller, the <b>minimum detectable effect with 80% power</b> (MDE80) at the threshold used was computed from the already recorded bootstrap interval alone, and — for confirmation — the power against half the validation estimate, i.e. against the effect expected after the winner's curse measured in §14.3 (<span class="mono">lab/potenza.py</span>, <span class="mono">lab/POTENZA.md</span>; no new data, no new tests).</p>
+<div class="tbl"><table>
+<thead><tr><th>Candidate</th><th class="n">Validation</th><th class="n">Confirmation [95% CI]</th><th class="n">MDE80</th><th class="n">Power</th><th class="n">Years</th><th>Reading</th></tr></thead><tbody>
+<tr><td>HAR versus 22-day average</td><td class="n">0.214</td><td class="n">0.175 [0.128, 0.224]</td><td class="n">0.082</td><td class="n">97%</td><td class="n">1.5</td><td>confirmed</td></tr>
+<tr><td>Night → day</td><td class="n">0.121</td><td class="n">0.164 [0.124, 0.204]</td><td class="n">0.069</td><td class="n">67%</td><td class="n">3.2</td><td>confirmed</td></tr>
+<tr><td>Band breakout (net points)</td><td class="n">+12.06</td><td class="n">−2.59 [−15.77, +12.13]</td><td class="n">21.1</td><td class="n">10%</td><td class="n">30</td><td><b>undecidable</b></td></tr>
+<tr><td>Slicing footprints</td><td class="n">0.024</td><td class="n">0.010 [−0.009, 0.030]</td><td class="n">0.032</td><td class="n">11%</td><td class="n">18</td><td><b>undecidable</b></td></tr>
+<tr><td>RTH → evening (regularity)</td><td class="n">1.70</td><td class="n">2.50 [−1.29, 5.64]</td><td class="n">5.90</td><td class="n">2%</td><td class="n">119</td><td><b>undecidable</b></td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 15.1.</b> “Power” = probability of seeing the target, i.e. half the validation estimate. “Years” = years of data like those of the confirmation needed to see the target with 80% power. Normal approximation of the bootstrap interval: orders of magnitude, not new verdicts. The full table (27 verdicts) is in <span class="mono">lab/POTENZA.md</span>.</p>
+<p>The correct reading of the most promising strategy changes: in confirmation the interval runs from −15.8 to +12.1 points over 190 trades and even contains the validation estimate. That block could neither promote it nor acquit it, and with a single instrument the question is not decidable on a human time scale (σ ≈ 100 points per trade, about 77 trades a year). The honest wording is “it did not hold up”, not “it was luck”. Hence a new protocol rule (<span class="mono">lab/PROTOCOLLO.md</span> §21): every pre-registration first declares a plausible effect and computes the MDE80 at Step 0; if the test cannot see it, it is not run.</p>
+
+<h2>16. Round 7: machine learning where the signal exists</h2>
+<p>Machine learning on <i>direction</i> had already been tried three times (Part I, family <span class="mono">ml</span>, family <span class="mono">r3_adaptive</span>) and was not repeated. Round 7 applied it to volatility, the only place where the laboratory found signal.</p>
+<h3>16.1 Range quantiles</h3>
+<p>Forecast of the 5-95% quantiles of the log RTH range, walk-forward 2013-2018 within discovery (1,478 sessions). Reference B0: the band of the §17 indicator re-fitted on the past only. Added features: the previous day's VXN and a calendar of FOMC, CPI and employment releases from official sources (dates known months in advance). Power declared at Step 0: MDE80 equal to 0.66% of the loss, against a relevance threshold of 2%.</p>
+<div class="tbl"><table>
+<thead><tr><th>Model</th><th class="n">Pinball loss versus B0</th><th class="n">p (Holm)</th><th class="n">Years +</th><th>Calibration</th><th>Outcome</th></tr></thead><tbody>
+<tr><td>M1 — linear quantile regression</td><td class="n">+1.29%</td><td class="n">0.026</td><td class="n">6/6</td><td>90% quantile at 87.4%</td><td><span class="chip fail">FAIL</span> below the 2% threshold</td></tr>
+<tr><td>M2 — quantile LightGBM</td><td class="n">−3.20%</td><td class="n">0.9999</td><td class="n">1/6</td><td>5% quantile at 9.1%</td><td><span class="chip fail">FAIL</span> worse than the reference</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 16.1.</b> Positive = model better than B0. The calendar carries real but small information (placebo with dates shifted within the same month: p 0.010 for M1, none for M2) and almost only on FOMC days, the only event that falls within the session: CPI and employment come out at 08:30 and their effect is already in the overnight range.</p>
+<p>Within this sample and specification, the tree model underperforms the reference. Model variance and the approximately linear relationships are possible explanations; the comparison does not establish that trees cannot improve volatility forecasts in other designs.</p>
+<h3>16.2 The volatility forecast against the price of options</h3>
+<p>The natural question: if today's volatility is predictable, does the price of the expiring at-the-money straddle already know it? Data bought for discovery only (Databento, definitions and trades with the best bid/ask of options on NQ futures, $15.22). Step 0 closed the family before the tests, under rules written beforehand: <b>53 usable Fridays</b> against a minimum of 150, straddle spread between 7% and 25% of the mid price, MDE80 of the advantage equal to 32% of the price against a plausible effect of 5%. Before 2019 Nasdaq-100 volume went through NDX and QQQ, not through options on the future. The question remains open and is undecidable with these data; buying later data is not allowed, because they fall in the blocks already used.</p>
+
+<h2>17. Two derived tools, with their measured errors</h2>
+<h3>17.1 Range Atteso (Expected Range)</h3>
+<p>An indicator that at 09:29 estimates the range of the regular session with a log-HAR plus the overnight range, with <b>fixed coefficients</b> estimated once on 2010-07 → 2023-09 and never re-estimated, evaluated on the 611 sessions of the confirmation block. It is a risk tool: it says how much, not where.</p>
+<div class="tbl"><table>
+<thead><tr><th>Method (2023-10 → 2026-03)</th><th class="n">R² (points)</th><th class="n">Mean absolute error</th><th class="n">Within open ± 1× forecast</th></tr></thead><tbody>
+<tr><td><b>Expected Range (HAR + night, fixed)</b></td><td class="n"><b>0.378</b></td><td class="n"><b>89.2 points</b></td><td class="n"><b>77.9%</b></td></tr>
+<tr><td>20-day average range</td><td class="n">0.132</td><td class="n">102.9 points</td><td class="n">74.6%</td></tr>
+<tr><td>ATR(14) × 0.803</td><td class="n">0.202</td><td class="n">100.4 points</td><td class="n">75.1%</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 17.1.</b> Advantage over the baselines significant in the squared log loss (p ≈ 0.0001). Declared limitations: in the first quarter of 2026 (53 sessions) the indicator does <b>not</b> beat the baselines; on news days the outer band should be read as a minimum (worst underestimate 4.7×). The confirmation block had already been used by the laboratory: the truly virgin test is the forward test from 2026-10-01.</p>
+<h3>17.2 The backtest auditor and its calibration</h3>
+<p>An auditor that grades a list of trades from A to F with the laboratory's tests (day bootstrap, Deflated Sharpe with the declared number of attempts, beta, placebo with the same structure, years, dependence on the best trades, decay, look-ahead audit). Before letting it judge others, its errors were measured on synthetic strategies whose truth is known (<span class="mono">product/engine/CALIBRAZIONE.md</span>, 200 repetitions per scenario).</p>
+<div class="tbl"><table>
+<thead><tr><th>Scenario</th><th class="n">Grade A or B</th></tr></thead><tbody>
+<tr><td>Random strategy, number of attempts declared honestly</td><td class="n">2.0% [0.8, 5.0]</td></tr>
+<tr><td>Best of 20 random strategies, declares N = 1</td><td class="n"><b>57.0%</b> [50.1, 63.7]</td></tr>
+<tr><td>Best of 20 random strategies, declares N = 20</td><td class="n">4.5% [2.4, 8.3]</td></tr>
+<tr><td>True advantage of 0.13 σ per trade, 750 trades</td><td class="n">99% (recognised)</td></tr>
+<tr><td>True advantage of 0.065 σ per trade, 750 trades</td><td class="n">55% (recognised)</td></tr>
+</tbody></table></div>
+<p class="cap"><b>Table 17.2.</b> False positives and power of the auditor. The auditor cannot see hidden attempts: whoever picks the best of many variants and declares N = 1 gets a grade that is worth nothing. The grade says so explicitly, and the report card states the minimum advantage that the supplied trades make it possible to see.</p>
+
+<h2>18. Final status and general conclusion</h2>
+<div class="key">
+<p>With one-minute bars, one instrument and assumed round-trip costs of 0.75 points, <b>none of the directional strategies tested met all of the laboratory's confirmation criteria</b>. This conclusion is limited to the tested hypotheses, measurement conventions, chronological reuse described above, and available statistical power. For several hypotheses, the data are inconclusive about smaller effects (§15). Two volatility relationships persist across the laboratory time blocks; neither establishes a directional trading edge. The tested quantile LightGBM specification did not improve the range reference. The 2010-2018 options sample was insufficient to determine whether forecast information could be monetized.</p>
+<p>The contribution that remains is methodological and transferable: the correction of time-stop exits, the mirror test, the drift null, the calibration of the criteria on placebos, the look-ahead audit with a positive control, the ledger of every look and — new in this version — the power calculation before every test and the measurement of the error rates of whoever judges.</p>
+<p><b>Final documented status.</b> The author records the vault 2026-03-20 to 2026-09-30 as closed without evaluation on 2026-10-07. The forward protocol begins on 2026-10-01; only observations after each hypothesis's own preregistration qualify for its forward test. No forward-test outcome is reported here, and no new evaluation was performed for version 4.1.</p>
+</div>
+
+<div class="part">Appendices</div>
+<h2>Appendix A — Ledger of looks (Part I)</h2>
+<p class="small">The Part II ledger is in <span class="mono">lab/ledger/</span>: 5,013 rows, one per test looked at.</p>
+<div class="tbl"><table>
+<thead><tr><th>#</th><th>Date</th><th>What changed</th><th>Recorded result</th></tr></thead><tbody>
+<tr><td>1</td><td>2026-09-21</td><td>first run of 1a</td><td>2/5 criteria; mean R of A 0.009 [−0.114, 0.135]</td></tr>
+<tr><td>1-bis</td><td>2026-09-21</td><td>re-render with geometric prior, Sharpe on all days</td><td>verdicts unchanged; Brier A = prior 0.1820</td></tr>
+<tr><td>2</td><td>2026-09-21</td><td>1b-S: order flow on 498 days ($89.17), rerun of 1a on S, calibration on a separate half</td><td>(i)(ii)(iii) FAIL, (iv) PASS; 1b − prior +0.0137 [+0.0076, +0.0196]</td></tr>
+<tr><td>2-bis</td><td>2026-09-21</td><td>re-render after the final review: paired clause c4, corrected texts, order-flow SHAP</td><td>verdicts unchanged; 1b − context +0.0086 [+0.0031, +0.0143]; 1a_S − prior +0.0105 [+0.0045, +0.0166]</td></tr>
+<tr><td>2-ter</td><td>2026-09-21</td><td>post hoc diagnostics of the council (V − 2C, Platt on the prior, ensemble)</td><td>C = +0.004/+0.005; Platt-prior 0.1801; ensemble 0.1805; “design #3 was chosen after these measurements”</td></tr>
+<tr><td>3</td><td>2026-09-22</td><td>1c: L2 offset, arms A/B/A′, exploratory features off; shuffle amended before the run</td><td>G1 −0.0023 valid; P1 −0.0007 [−0.0023, +0.0010] FAIL; S1 not read; G2 PASS</td></tr>
+<tr><td>3-bis</td><td>2026-09-22</td><td>re-render: fixed-offset shuffle reported, paired descriptives, explicit reading</td><td>verdicts unchanged; mean R B − A +0.023 [−0.160, +0.216]; Jaccard 0.370</td></tr>
+<tr><td>3-ter</td><td>2026-09-22</td><td>declared post hoc diagnostic: deviation from the prior and EV by rr band</td><td>at the time: negative EV in 5 bands out of 5 — <b>subsequently retracted</b> (§10)</td></tr>
+<tr><td>correction</td><td>2026-09-23</td><td>discovery of the time-stop artefact; mark-to-market gross EV</td><td>EV −0.011 R [−0.041, +0.020]: the setup lies on the wall, not below it</td></tr>
+<tr><td>S1–S8</td><td>2026-09-22/23</td><td>screening of eight setups with the defective metric</td><td>superseded by the redo; kept in the ledger</td></tr>
+<tr><td>V2</td><td>2026-09-23</td><td>complete redo with the correct statistic, 53 confirmatory tests, FDR q = 0.10</td><td><b>zero discoveries</b>; minimum p 0.0108 against threshold 0.0019</td></tr>
+<tr><td>Branch B</td><td>2026-09-23</td><td>extension 2010-06 → 2016-09 bought ($7.34) to decide whether the slope was structural</td><td>slope −0.0144 [−0.0471, +0.0181], negative in 3 years out of 7 against 8 out of 8: <b>period artefact</b>; the out-of-sample test is not run</td></tr>
+<tr><td>Map</td><td>2026-09-23</td><td>exploratory: EV surface over 49 geometries in ATR units, two panels</td><td>negative in 49 cells out of 49 (recent) and 44 out of 49 (old)</td></tr>
+<tr><td>Test A</td><td>2026-09-23</td><td>decomposition of <span class="mono">micro</span> on the diagonal and variance ratio</td><td>residual <b>exactly 0</b> in 28 cells out of 28: no asymmetry in the engine; VR 0.93–0.97</td></tr>
+<tr><td>Test B/C</td><td>2026-09-23</td><td>placebo split before/after the signal; fixed-horizon returns without barriers</td><td>the “+0.065 of timing” was look-ahead: <b>+0.0008</b>; the setup does not separate at any horizon</td></tr>
+<tr><td>Step 1</td><td>2026-09-23</td><td>duplication check, definitions and events only</td><td><b>100.0%</b> of the “value area continuation” candidate contained, with side reversed, in the new one</td></tr>
+<tr><td>Step 0</td><td>2026-09-23</td><td>gross at 60 minutes on the declared population, both periods</td><td>from +0.19 (weighted sample) to <b>−0.066</b> and <b>+0.020</b>: three stopping conditions out of three, <b>line of work closed, confirmation not purchased</b></td></tr>
+</tbody></table></div>
+
+<h2>Appendix B — Reproducibility</h2>
+<div class="tbl"><table>
+<thead><tr><th>Item</th><th>Value</th></tr></thead><tbody>
+<tr><td>Specification</td><td><span class="mono">docs/superpowers/specs/2026-09-20-nq-value-area-ml-design.md</span> (§11 criteria, §12-bis, §12-ter)</td></tr>
+<tr><td>Pre-registration commits</td><td>1b-S: <span class="mono">4f7ac9b</span> (spec), <span class="mono">e5e398e</span> (sampling and cost) · 1c: <span class="mono">2432fef</span>, amendment <span class="mono">bbab385</span> (before run <span class="mono">f12f9e3</span>)</td></tr>
+<tr><td>Generated reports</td><td><span class="mono">reports/oos_report_1a.md</span>, <span class="mono">oos_report_1a_S.md</span>, <span class="mono">oos_report_1b.md</span>, <span class="mono">oos_report_1c.md</span>, <span class="mono">oos_report_1c_A.md</span>, <span class="mono">oos_report_1c_B.md</span></td></tr>
+<tr><td>Configuration hash (1c)</td><td><span class="mono">2ee491362e71</span></td></tr>
+<tr><td>Bootstrap</td><td>10,000 resamples by day, seed 0; 95% CI (and 99% for 1c)</td></tr>
+<tr><td>Model</td><td>LightGBM 4.7, seed 0 (A′: 1), num_threads 1, deterministic; scikit-learn 1.9; pandas 3</td></tr>
+<tr><td>Data spending, Part I</td><td>$101.98 ($12.81 bars + $89.17 ticks); 2010-2016 extension $7.34</td></tr>
+<tr><td>Part II: code and rules</td><td><span class="mono">lab/core.py</span> (the only gateway to the data), <span class="mono">lab/controller.py</span>, <span class="mono">lab/PROTOCOLLO.md</span> (§1-§23), <span class="mono">lab/RISULTATI.md</span>, verdicts in <span class="mono">lab/verdicts/</span></td></tr>
+<tr><td>Part II: power and calibration</td><td><span class="mono">lab/potenza.py</span> → <span class="mono">lab/POTENZA.md</span>; <span class="mono">product/engine/calibrazione.py</span> → <span class="mono">CALIBRAZIONE.md</span></td></tr>
+<tr><td>Round 7: commits</td><td>pre-registration <span class="mono">1b0cc0c</span>; test code <span class="mono">eeaaab3</span>, <span class="mono">c942f3b</span>; outcomes <span class="mono">4f17faa</span>, <span class="mono">8fa25f9</span></td></tr>
+<tr><td>Data spending, Part II</td><td>options on NQ futures 2010-2018: $15.22 (plus possibly $1.13 for an interrupted request)</td></tr>
+<tr><td>Vault</td><td>2026-03-20 → 2026-09-30, closed on 2026-10-07 (<span class="mono">3a07983</span>), never opened</td></tr>
+</tbody></table></div>
+
+<h2>Appendix C — Definitions</h2>
+<p class="small"><b>R</b>: trade return in risk units (P&amp;L divided by the stop distance in points times the point value), after costs. <b>Brier</b>: mean of (<i>p</i> − <i>y</i>)². <b>AUC</b>: area under the ROC curve. <b>Geometric prior</b>: eq. (1). <b>L2</b>: prior calibrated with a two-parameter logistic estimated on the fold's training data only. <b>Day-block bootstrap</b>: resampling of test days with replacement, all events of a day together. <b>Paired comparison</b>: per-event difference on the same identifiers. <b>Look</b>: every reading of the working OOS, recorded with its numbers. <b>Vault</b>: period never read.</p>
+
+<h2>Appendix D — Operational definitions</h2>
+<p class="small"><b>Volume profile</b>: the volume of each one-minute bar is distributed uniformly over the price levels from low to high in steps of 0.25; the point of control is the most traded level; the value area expands from the POC by adding the heaviest adjacent levels in pairs until it covers 70% of the volume. The overnight VA uses 18:00–09:29 ET and stays fixed; the developing VA is recomputed at every 5-minute close on the RTH bars up to that moment.</p>
+<p class="small"><b>Label</b>: the one-minute bars are walked from the entry; target touched first (limit order) → 1, stop first → 0; if the same bar contains both levels the stop is assumed (conservative) → 0; at the 15:55 time stop → 0; if the entry bar already opens beyond the stop or beyond the target the event was not entered (gap rule) and has zero P&amp;L. “gap” and “no_bars” events remain in the event count but produce no trades.</p>
+<p class="small"><b>Volume features</b>: <span class="mono">vol_slope_excursion</span> is the closed-form OLS slope of the volumes of the excursion's one-minute bars, normalised; <span class="mono">vol_at_extreme</span> and <span class="mono">vol_reentry_bar</span> are volumes normalised on a 20-day baseline; the ATR is 14-period on 5-minute bars. <b>Order flow</b>: with “with” = aggressor in the direction of the break, delta = (V<sub>against</sub> − V<sub>with</sub>)/(V<sub>against</sub> + V<sub>with</sub>), NaN if the denominator is zero; the extreme zone is ±4 ticks around the extreme price; “large” trades are those above the 95th percentile of the window; all reading windows are restricted to [break, re-entry), that of the re-entry to the last 5 minutes.</p>
+<p class="small"><b>Context-only model</b>: LightGBM on the six features known before the excursion only (value area type, minutes since the open, bars in the profile, open relative to the overnight VA, stop distance in ATR, rr), trained with the same procedure as the full model. <b>Forward selection</b>: starting from the core features, each exploratory feature is added if it improves the validation Brier by at least 10<sup>−4</sup>, one at a time, in list order. <b>C-opt</b>: the thresholds of the C rules are searched on a fixed grid maximising the realised mean R on the fold's training data, with at least 50 trades. <b>Criterion (iii) of 1b-S</b>: for each day the realised R of the trades taken by each version are summed and days are resampled; the statistic is the difference of the per-trade means.</p>
+
+<h2>Data and code availability</h2>
+<p>The public snapshot at <a href="https://github.com/tramitemarketing/NQ-ML">https://github.com/tramitemarketing/NQ-ML</a> includes research code, selected specifications, aggregate reports, experiment ledgers, and this manuscript. It excludes the original complete Git history, credentials, licensed market-data files, event-level trade exports, caches, and trained-model artifacts. Some historical paths in reports describe the original private workspace. See REPRODUCIBILITY.md and PROVENANCE.md for the scope and limits of this release.</p><p>Market data (one-minute bars, tick trades, and options from GLBX.MDP3) are licensed through Databento and are not redistributed. End-to-end reproduction requires appropriate data permissions, equivalent data preparation, and the original historical environment. Synthetic unit tests can be run without purchasing data; passing them is not an independent reproduction of the empirical conclusions. Historical purchase costs in Table 1 are not current price quotations. No empirical rerun was performed as part of version 4.1.</p>
+
+<p class="note">Working paper for research and education. The author's interest in the tested strategy is disclosed above. Publication adaptation adds no independent empirical verification and provides no investment recommendation.</p>
+<h2>References</h2>
+<ol class="refs">
+  <li>López de Prado, M. (2018). <i>Advances in Financial Machine Learning</i>. Wiley — meta-labeling, purged walk-forward with embargo.</li>
+  <li>Ke, G. et al. (2017). LightGBM: A Highly Efficient Gradient Boosting Decision Tree. <i>NeurIPS</i>.</li>
+  <li>Zadrozny, B., Elkan, C. (2002). Transforming classifier scores into accurate multiclass probability estimates. <i>KDD</i> — isotonic calibration.</li>
+  <li>Platt, J. (1999). Probabilistic outputs for support vector machines. <i>Advances in Large Margin Classifiers</i> — two-parameter logistic calibration.</li>
+  <li>Künsch, H. R. (1989). The jackknife and the bootstrap for general stationary observations. <i>Annals of Statistics</i> — block bootstrap.</li>
+  <li>Brier, G. W. (1950). Verification of forecasts expressed in terms of probability. <i>Monthly Weather Review</i>.</li>
+  <li>Nosek, B. A. et al. (2018). The preregistration revolution. <i>PNAS</i>.</li>
+  <li>Databento (2026). <i>GLBX.MDP3 dataset documentation</i>; schema <span class="mono">trades</span>, aggressor-side convention.</li>
+  <li>Corsi, F. (2009). A Simple Approximate Long-Memory Model of Realized Volatility. <i>Journal of Financial Econometrics</i>, 7(2), 174-196. <a href="https://doi.org/10.1093/jjfinec/nbp001">doi:10.1093/jjfinec/nbp001</a>.</li>
+  <li>Bailey, D. H., López de Prado, M. (2014). The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality. <i>Journal of Portfolio Management</i>, 40(5), 94-107. <a href="https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf">Author manuscript</a>.</li>
+  <li>Koenker, R., Bassett, G. (1978). Regression quantiles. <i>Econometrica</i>.</li>
+  <li>White, H. (2000). A reality check for data snooping. <i>Econometrica</i> — comparison with the maximum of the placebos.</li>
+  <li>Button, K. S. et al. (2013). Power failure: why small sample size undermines the reliability of neuroscience. <i>Nature Reviews Neuroscience</i> — power and the winner's curse.</li>
+  <li>Benjamini, Y., Hochberg, Y. (1995). Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing. <i>Journal of the Royal Statistical Society: Series B</i>, 57(1), 289-300. <a href="https://doi.org/10.1111/j.2517-6161.1995.tb02031.x">doi:10.1111/j.2517-6161.1995.tb02031.x</a>.</li>
+  <li>Durrett, R. (2019). <i>Probability: Theory and Examples</i>, fifth edition. Cambridge University Press. Chapter 4: martingales and optional stopping.</li>
+</ol>
+</div>
