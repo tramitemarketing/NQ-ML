@@ -46,7 +46,8 @@ Esempi di indirizzo:
     http://127.0.0.1:8765/?scena=storia&fam=r6_gamma&ui=0
     http://127.0.0.1:8765/?scena=verdetti&ui=0
 
-`dur` è la durata in secondi del replay della Storia (20, 40, 60 o 90).
+`dur` è la durata in secondi del replay della Storia (20, 40, 60 o 90). Quando la famiglia ha pochi risultati
+il replay dura meno: circa 0,4 secondi per punto, con un minimo di 4 secondi.
 
 ## Salvare il grafico di un test
 
@@ -76,8 +77,10 @@ sullo schermo, e senza `--demo` non compaiono. Non vanno committate.
   e dal segno della media. Se un test non ha registrato un p-value, non compare nelle scene 1 e 2.
 - **Fascia del caso.** |z| < 1,96: un risultato lì dentro non si distingue dal caso al 5 %. Con migliaia di
   test molti punti cadono fuori dalla fascia per puro caso: per questo esistono validation e confirmation.
-- **Punti allineati in alto e in basso.** Il bootstrap ha 10.000 repliche, quindi il p-value più piccolo che
-  può registrare è 1 su 10.000. Tutti i risultati oltre quel limite finiscono sulla stessa riga.
+- **Triangoli e «oltre».** Il bootstrap ha 10.000 repliche, quindi il p-value più piccolo che può registrare è
+  1 su 10.000. Tutti i risultati oltre quel limite finiscono sullo stesso z-score (3,89 in valore assoluto):
+  non è una misura, è il punto dove lo strumento smette di distinguere. La dashboard li disegna come triangoli
+  con la punta verso l'esterno e scrive «z-score oltre −3,89» e «p-value ≤ 0,0001». La distanza vera è più grande.
 - **Giri 8, 9 e 10.** Salvano il risultato in campi diversi dai giri vecchi, e la dashboard li legge così:
   blocco `netto` (media netta in punti, z dal `p_two` e dal segno, p mostrato = quello a una coda del test);
   `diff` con `p` a una coda (z dal p a una coda, ipotesi «diff > 0»); `mean_net_R` delle prove di futilità

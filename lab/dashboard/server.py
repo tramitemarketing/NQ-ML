@@ -57,6 +57,18 @@ def z_from(mean, p_two, t=None) -> float | None:
     return max(-Z_CAP, min(Z_CAP, math.copysign(z, mean)))
 
 
+def z_limited(p_two=None, t=None, p_one=None) -> bool:
+    """True se lo z è un limite e non una misura: il p registrato è al minimo del bootstrap (1 su 10.000) oppure
+    `t` supera Z_CAP. In quel caso la distanza vera è più grande di quella mostrata e la pagina scrive «oltre»."""
+    t, p_two, p_one = _num(t), _num(p_two), _num(p_one)
+    if t is not None:
+        return abs(t) > Z_CAP
+    eps = P_FLOOR * (1 + 1e-9)
+    if p_two is not None:
+        return p_two <= eps
+    return p_one is not None and (p_one <= eps or p_one >= 1 - eps)
+
+
 def _result(row: dict, prefix: str = "") -> dict | None:
     """Estrae un risultato (media, intervallo, p, anni) da una riga, al livello principale o con un prefisso."""
     k = (lambda name: f"{prefix}_{name}") if prefix else (lambda name: name)
@@ -78,7 +90,8 @@ def _result(row: dict, prefix: str = "") -> dict | None:
         "mean": mean, "lo": _num(row.get(k("lo"))), "hi": _num(row.get(k("hi"))),
         "p": p_two if p_two is not None else (_num(row.get("p_one")) if not prefix else None),
         "p_kind": "two" if p_two is not None else ("one" if _num(row.get("p_one")) is not None and not prefix else None),
-        "z": z, "n": _num(row.get(k("n"))) if _num(row.get(k("n"))) is not None else _num(row.get("n")),
+        "z": z, "z_lim": z is not None and z_limited(p_two, None if prefix else row.get("t")),
+        "n": _num(row.get(k("n"))) if _num(row.get(k("n"))) is not None else _num(row.get("n")),
         "yearly": yearly or None, "years_pos": row.get(k("years_pos")),
         "gross": _num(row.get(k("mean_gross"))) if _num(row.get(k("mean_gross"))) is not None else _num(row.get("gross")),
         "placebo_p": _num(row.get("placebo_p")) if not prefix else None, "is_coef": is_coef,
@@ -119,7 +132,7 @@ def _result_alt(row: dict) -> dict | None:
     """
     p_one = _num(row.get("p"))
     netto = row.get("netto")
-    empty = {"lo": None, "hi": None, "p": None, "p_kind": None, "z": None, "n": None, "yearly": None,
+    empty = {"lo": None, "hi": None, "p": None, "p_kind": None, "z": None, "z_lim": False, "n": None, "yearly": None,
              "years_pos": None, "gross": None, "placebo_p": None, "is_coef": False, "stat": "mean", "unit_hint": None}
     if isinstance(netto, dict) and _num(netto.get("mean")) is not None:
         mean, p_two = _num(netto["mean"]), _num(netto.get("p_two"))
@@ -129,7 +142,8 @@ def _result_alt(row: dict) -> dict | None:
         in_points = _num(base.get("netto_pt")) is not None and abs(base["netto_pt"] - mean) < 1e-9
         return {**empty, "mean": mean, "lo": _num(netto.get("lo")), "hi": _num(netto.get("hi")),
                 "p": p_one if p_one is not None else p_two, "p_kind": "one" if p_one is not None else ("two" if p_two is not None else None),
-                "z": z if z is not None else z_from_one_sided(p_one), "n": _num(netto.get("n")),
+                "z": z if z is not None else z_from_one_sided(p_one),
+                "z_lim": z_limited(p_two) if z is not None else z_limited(p_one=p_one), "n": _num(netto.get("n")),
                 "yearly": _yearly(row.get("per_anno")) or _yearly(crit.get("years")), "years_pos": crit.get("years_pos"),
                 "gross": _num(base.get("lordo_pt")), "unit_hint": "punti netti per trade" if in_points else None}
     if _num(row.get("mean_net_R")) is not None:
@@ -141,7 +155,7 @@ def _result_alt(row: dict) -> dict | None:
         lo = _num(row.get("lo")) if _num(row.get("lo")) is not None else _num(boot.get("lo"))
         hi = _num(row.get("hi")) if _num(row.get("hi")) is not None else _num(boot.get("hi"))
         return {**empty, "mean": _num(row["diff"]), "lo": lo, "hi": hi, "p": p_one, "p_kind": "one",
-                "z": z_from_one_sided(p_one), "stat": "diff"}
+                "z": z_from_one_sided(p_one), "z_lim": z_limited(p_one=p_one), "stat": "diff"}
     return None
 
 
@@ -186,7 +200,7 @@ def read_ledger(ledger_dir: Path) -> tuple[list[dict], int]:
                 found = True
         if not found:
             out.append({**base, "label": "", "mean": None, "lo": None, "hi": None, "p": None, "p_kind": None,
-                        "z": None, "n": _num(row.get("n")), "yearly": None, "years_pos": None, "gross": None,
+                        "z": None, "z_lim": False, "n": _num(row.get("n")), "yearly": None, "years_pos": None, "gross": None,
                         "placebo_p": None, "is_coef": False})
     return out, len(rows)
 
@@ -261,7 +275,8 @@ def build_state(lab: Path = LAB, demo: bool = False) -> dict:
                 "phases": phases, "first_ts": min(ts) if ts else None, "last_ts": max(ts) if ts else None,
                 "z_mean": sum(zs) / len(zs) if zs else None,
                 "z_beyond": sum(1 for z in zs if abs(z) > 1.96), "z_above": sum(1 for z in zs if z > 1.96),
-                "z_below": sum(1 for z in zs if z < -1.96), "z_cap": Z_CAP},
+                "z_below": sum(1 for z in zs if z < -1.96), "z_cap": Z_CAP,
+                "z_lim": sum(1 for r in results if r["z"] is not None and r["z_lim"] and not r["control"])},
         "results": results,
         "verdicts": read_verdicts(lab / "verdicts"),
         "figures": read_figures(lab / "figures", demo),

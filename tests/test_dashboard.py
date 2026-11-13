@@ -163,3 +163,19 @@ def test_le_forme_nuove_non_toccano_le_righe_con_media_in_cima(tmp_path):
     row = _row(1, mean=1.0, p_two=0.05, diff=-9.0, p=0.99, netto={"mean": -5.0, "p_two": 0.001})
     r = server.read_ledger(_ledger(tmp_path, [row]) / "ledger")[0][0]
     assert r["mean"] == 1.0 and r["z"] == pytest.approx(1.96, abs=0.001)
+
+
+def test_z_al_limite_del_bootstrap_e_segnato_come_limite(tmp_path):
+    """Tre test diversi con p = 0,0001 cadono sullo stesso z: non è una misura, è il limite del bootstrap."""
+    rows = [_row(1, netto={"mean": -3.1, "p_two": 0.0001}, p=1.0),          # forma dei giri 9 e 10
+            _row(2, mean=-7.4, p_two=0.0),                                  # forma vecchia, p registrato come 0
+            _row(3, mean=1.0, p_two=0.03),                                  # misura vera
+            _row(4, diff=-0.0026, p=0.811),                                 # p a una coda lontano dai limiti
+            _row(5, diff=0.5, p=0.0001),                                    # p a una coda al minimo
+            _row(6, b=0.2, t=7.5)]                                          # t oltre il tetto
+    lab = _ledger(tmp_path, rows)
+    a, b, c, d, e, f = server.read_ledger(lab / "ledger")[0]
+    assert a["z"] == b["z"] == pytest.approx(-3.89, abs=0.01)
+    assert [r["z_lim"] for r in (a, b, c, d, e, f)] == [True, True, False, False, True, True]
+    assert server.build_state(lab)["lab"]["z_lim"] == 4
+    assert server.read_ledger(_ledger(tmp_path / "x", [_row(1)]) / "ledger")[0][0]["z_lim"] is False
