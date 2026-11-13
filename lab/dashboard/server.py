@@ -144,6 +144,7 @@ def _result_alt(row: dict) -> dict | None:
                 "p": p_one if p_one is not None else p_two, "p_kind": "one" if p_one is not None else ("two" if p_two is not None else None),
                 "z": z if z is not None else z_from_one_sided(p_one),
                 "z_lim": z_limited(p_two) if z is not None else z_limited(p_one=p_one), "n": _num(netto.get("n")),
+                "p2": p_two if p_one is not None else None,   # lo z viene da questo: la pagina lo mostra accanto al p a una coda
                 "yearly": _yearly(row.get("per_anno")) or _yearly(crit.get("years")), "years_pos": crit.get("years_pos"),
                 "gross": _num(base.get("lordo_pt")), "unit_hint": "punti netti per trade" if in_points else None}
     if _num(row.get("mean_net_R")) is not None:

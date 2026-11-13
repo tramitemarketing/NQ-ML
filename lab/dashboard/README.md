@@ -81,6 +81,11 @@ sullo schermo, e senza `--demo` non compaiono. Non vanno committate.
   1 su 10.000. Tutti i risultati oltre quel limite finiscono sullo stesso z-score (3,89 in valore assoluto):
   non è una misura, è il punto dove lo strumento smette di distinguere. La dashboard li disegna come triangoli
   con la punta verso l'esterno e scrive «z-score oltre −3,89» e «p-value ≤ 0,0001». La distanza vera è più grande.
+- **Due p-value nella scena Test.** Nei giri 9 e 10 il test registrato è a una coda (ipotesi «netto > 0»): un
+  risultato molto negativo ha quindi p-value vicino a 1. Lo z-score viene invece dal p-value a due code. La
+  scena li mostra tutti e due, ognuno con il suo nome.
+- **Figure con più curve.** La legenda sta sopra il grafico, con il tratto di ogni curva. Il numero del marker
+  è scritto con i decimali con cui è stato salvato (almeno due).
 - **Giri 8, 9 e 10.** Salvano il risultato in campi diversi dai giri vecchi, e la dashboard li legge così:
   blocco `netto` (media netta in punti, z dal `p_two` e dal segno, p mostrato = quello a una coda del test);
   `diff` con `p` a una coda (z dal p a una coda, ipotesi «diff > 0»); `mean_net_R` delle prove di futilità

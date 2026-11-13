@@ -179,3 +179,14 @@ def test_z_al_limite_del_bootstrap_e_segnato_come_limite(tmp_path):
     assert [r["z_lim"] for r in (a, b, c, d, e, f)] == [True, True, False, False, True, True]
     assert server.build_state(lab)["lab"]["z_lim"] == 4
     assert server.read_ledger(_ledger(tmp_path / "x", [_row(1)]) / "ledger")[0][0]["z_lim"] is False
+
+
+def test_p_a_due_code_accanto_al_p_a_una_coda(tmp_path):
+    """Giri 9 e 10: il test è a una coda ma lo z viene dal p a due code; la pagina deve poterli mostrare tutti e due."""
+    rows = [_row(1, netto={"mean": -3.1, "p_two": 0.0001}, p=1.0),
+            _row(2, netto={"mean": 0.4, "p_two": 0.2}),          # nessun p a una coda: il p mostrato è già quello a due code
+            _row(3, mean=1.0, p_two=0.03)]
+    a, b, c = server.read_ledger(_ledger(tmp_path, rows) / "ledger")[0]
+    assert (a["p"], a["p_kind"], a["p2"]) == (1.0, "one", 0.0001)
+    assert (b["p"], b["p_kind"], b["p2"]) == (0.2, "two", None)
+    assert "p2" not in c or c["p2"] is None

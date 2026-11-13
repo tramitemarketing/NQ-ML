@@ -106,6 +106,7 @@ let W = 0, H = 0, raf = 0;
 
 /* ---------- formati ---------- */
 const nf = (x, d=0) => x==null ? 'n.d.' : x.toLocaleString('it-IT', {minimumFractionDigits:d, maximumFractionDigits:d, useGrouping:'always'});
+function mfmt(x){ if(x==null) return 'n.d.'; for(const d of [2,3,4]) if(Math.abs(x - +x.toFixed(d)) < 1e-9) return nf(x, d); return sig(x); }   /* 0,7 salvato come 0,70 si legge 0,70 */
 function sig(x){ if(x==null) return 'n.d.'; const a=Math.abs(x); return nf(x, a>=100?0 : a>=10?1 : a>=1?2 : a>=0.1?3 : 4); }
 const zfmt = r => (r.z_lim ? 'oltre ' : '') + nf(r.z, 2);   /* z_lim: p-value al minimo del bootstrap, la distanza vera è più grande */
 function mark(x, y, R, r){ ctx.beginPath(); if(r.z_lim){ const s = r.z > 0 ? -1 : 1, k = Math.max(R*1.5, 2.2); ctx.moveTo(x, y + s*k); ctx.lineTo(x - k, y - s*k*.8); ctx.lineTo(x + k, y - s*k*.8); ctx.closePath(); } else ctx.arc(x, y, R, 0, 6.2832); }
@@ -283,11 +284,14 @@ Scene.test = {
   },
   draw(p){
     const r = this.r, hasCI = r.lo != null && r.hi != null && r.mean != null, yrs = r.yearly ? Object.keys(r.yearly).sort() : [];
-    const m = margins(2.4), top = yrs.length ? fs(1.2) : Math.max(fs(1.2), H*.24), stripH = hasCI ? Math.min(fs(6.5), H*.26) : 0, e = ease(p*2.2); S.hit = [];
+    const m = margins(2.4), stripH = hasCI ? Math.min(fs(6.5), H*.26) : 0, e = ease(p*2.2); let top = yrs.length ? fs(1.2) : Math.max(fs(1.2), H*.24); S.hit = [];
     font(fs(.9)); ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    const facts = [`n ${nf(r.n)}`, r.p != null ? `p-value ${pfmt(r.p)}${r.p_kind==='one'?' (one-sided)':''}` : null, r.z != null ? `z-score ${zfmt(r)}` : null,
+    const facts = [`n ${nf(r.n)}`, r.p != null ? `p-value ${pfmt(r.p)}${r.p_kind==='one'?' (one-sided, ipotesi > 0)':''}` : null, r.p2 != null ? `p-value ${pfmt(r.p2)} (two-sided)` : null, r.z != null ? `z-score ${zfmt(r)}` : null,
                    r.years_pos ? `anni positivi ${r.years_pos}` : null, r.gross != null ? `lordo ${sig(r.gross)}` : null, r.phase].filter(Boolean);
-    ctx.fillText(facts.join('     '), 0, 0);
+    { /* i fatti vanno a capo quando non stanno in una riga (formato verticale) */
+      let fx = 0, fy = 0; const gapF = ctx.measureText('     ').width;
+      for(const t of facts){ const w = ctx.measureText(t).width; if(fx > 0 && fx + w > W){ fx = 0; fy += fs(1.45); } ctx.fillText(t, fx, fy); fx += w + gapF; }
+      top += fy; }
     if(hasCI){
       const a = Math.min(r.lo, 0), b = Math.max(r.hi, 0), padv = (b - a)*.12 || 1, x0 = a - padv, x1 = b + padv;
       const sx = v => m.l + (v - x0)/(x1 - x0) * (W - m.l - m.r), y = top + fs(1.6) + stripH*.38;
@@ -386,11 +390,12 @@ Scene.figura = {
     const g = this.f; $('title').textContent = g.title; $('sub').textContent = `${g.family} / ${g.test_id}${g.note ? '. ' + g.note : ''}`;
     let k = '', l = '';
     if(g.type === 'placebo'){ k = pct(g.share_as_extreme); l = 'placebo che fanno almeno quanto il reale'; }
-    else if(g.marker && g.marker.label){ k = sig(g.marker.x); l = g.marker.label; }
+    else if(g.marker && g.marker.label){ k = mfmt(g.marker.x); l = g.marker.label; }
     $('keynum').textContent = k; $('keylab').textContent = l;
   },
   draw(p){
-    const g = this.f, f = frame(margins(3.4)), e = ease(p*1.8); S.hit = [];
+    const g = this.f, multi = g.type === 'line' && g.series.length > 1, mg = margins(3.4); if(multi) mg.t += fs(1.9);
+    const f = frame(mg), e = ease(p*1.8); S.hit = [];
     if(g.type === 'bars'){
       const v = g.values.map(x => x == null ? 0 : x), all = v.concat(g.lo||[], g.hi||[]).filter(x => x != null), lo = Math.min(0, ...all), hi = Math.max(0, ...all), pad = (hi-lo)*.1 || 1;
       const sy = yAxis(f, lo - (lo<0?pad:0), hi + (hi>0?pad:0), g.ylabel), slot = f.w/v.length, bw = Math.min(24, slot*.6);
@@ -403,7 +408,7 @@ Scene.figura = {
     } else if(g.type === 'line'){
       const ys = g.series.flatMap(s => s.y).filter(x => x != null), lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi-lo)*.08 || 1, n = g.x.length;
       const sy = yAxis(f, lo - pad, hi + pad, g.ylabel), xn = g.x_numeric, x0 = xn ? Math.min(...g.x) : 0, x1 = xn ? Math.max(...g.x) : n - 1;
-      const sx = i => f.x + ((xn ? g.x[i] : i) - x0)/((x1 - x0) || 1) * f.w, clipW = f.w * e + 6;
+      const sx = i => xn ? f.x + (g.x[i] - x0)/((x1 - x0) || 1) * f.w : f.x + (i + .5)/n * f.w, clipW = f.w * e + 6;
       font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
       if(xn){ const tv = ticks(x0, x1, Math.max(4, Math.round(f.w/150))), tf = tfmt(tv); for(const v of tv) ctx.fillText(tf(v), f.x + (v - x0)/((x1 - x0)||1)*f.w, f.y + f.h + fs(1.3)); }
       else g.x.forEach((lab, i) => { if(n <= 16 || i % Math.ceil(n/10) === 0) ctx.fillText(lab, sx(i), f.y + f.h + fs(1.3)); });
@@ -412,12 +417,21 @@ Scene.figura = {
       g.series.forEach((s, k) => { ctx.strokeStyle = k === 0 ? C.ink : C.muted; ctx.lineWidth = 2; ctx.setLineDash(dashes[k % 4]); ctx.lineJoin = 'round'; ctx.beginPath(); let pen = false;
         s.y.forEach((v, i) => { if(v == null){ pen = false; return; } pen ? ctx.lineTo(sx(i), sy(v)) : ctx.moveTo(sx(i), sy(v)); pen = true; if(k === 0 || g.series.length > 1) S.hit.push([sx(i), sy(v), {k:(xn?sig(g.x[i]):g.x[i]), v, s:s.name}]); });
         ctx.stroke(); ctx.setLineDash([]);
-        const li = s.y.length - 1; if(g.series.length > 1 && s.y[li] != null){ font(fs(.82)); ctx.fillStyle = C.ink; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(s.name, sx(li), sy(s.y[li]) - 6 - k*fs(1)); } });
+      });
       ctx.restore();
+      if(multi){ /* legenda sopra il grafico: tratto e nome, mai sopra le curve */
+        const seg = 34, gap = 22; let k0 = .9; font(fs(k0)); const tot = () => g.series.reduce((a, s) => a + seg + 8 + ctx.measureText(s.name).width + gap, -gap);
+        while(tot() > f.w && k0 > .6){ k0 -= .05; font(fs(k0)); }
+        let lx = f.x; const ly = f.y - fs(1.15); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        g.series.forEach((s, k) => { ctx.strokeStyle = k === 0 ? C.ink : C.muted; ctx.lineWidth = 2; ctx.setLineDash(dashes[k % 4]); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + seg, ly); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle = C.ink; ctx.fillText(s.name, lx + seg + 8, ly); lx += seg + 8 + ctx.measureText(s.name).width + gap; });
+      }
       if(g.marker && xn && e >= 1){ const mx = f.x + (g.marker.x - x0)/((x1 - x0)||1)*f.w, my = sy(g.marker.y);
         ctx.strokeStyle = C.red; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(mx, f.y + f.h); ctx.lineTo(mx, my); ctx.lineTo(f.x, my); ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(mx, my, 9, 0, 6.2832); ctx.fill(); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(mx, my, 6, 0, 6.2832); ctx.fill();
-        font(fs(.95), true, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(`${g.marker.label || ''} ${sig(g.marker.x)}`, mx + 16, my - 10); }
+        font(fs(.95), true, 700); const mt = `${g.marker.label || ''} ${mfmt(g.marker.x)}`.trim(), mw = ctx.measureText(mt).width, right = mx + 16 + mw > f.x + f.w, tx = right ? mx - 16 - mw : mx + 16;
+        ctx.fillStyle = C.bg; ctx.fillRect(tx - 6, my - 10 - fs(1.3), mw + 12, fs(1.5));   /* fondo: l'etichetta resta leggibile sopra le curve */
+        ctx.fillStyle = C.red; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(mt, tx, my - 10); }
     } else if(g.type === 'scatter'){
       const xs = g.x.filter(v => v != null), ys = g.y.filter(v => v != null), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), py = (y1-y0)*.06 || 1, px = (x1-x0)*.04 || 1;
       const sy = yAxis(f, y0 - py, y1 + py, g.ylabel), sx = v => f.x + (v - (x0 - px))/((x1 - x0 + 2*px)) * f.w, n = Math.floor(g.x.length * e);
