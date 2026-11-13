@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NQ-ML Scena</title>
+<style>
+  :root{
+    --bg:#23262a; --strip:#2b2f34; --ink:#f1efe9; --muted:#8b9096; --faint:#474c53; --red:#e5484d;
+    --display:"Bahnschrift","DIN Alternate","Roboto Condensed","Arial Narrow",sans-serif;
+    --body:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --pad:clamp(18px,4vmin,56px);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden}
+  #stage{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto;padding:var(--pad);gap:clamp(10px,2vmin,24px)}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 32px}
+  .titles{min-width:0;flex:1 1 320px}
+  h1{font-family:var(--display);font-stretch:85%;font-weight:600;font-size:clamp(24px,4.2vmin,54px);line-height:1.05;margin:0;letter-spacing:.005em}
+  #sub{color:var(--muted);font-size:clamp(13px,1.9vmin,22px);line-height:1.35;margin:.5em 0 0;max-width:62ch}
+  .key{text-align:right;flex:0 0 auto}
+  #keynum{font-family:var(--display);font-stretch:75%;font-weight:700;font-size:clamp(46px,11vmin,150px);line-height:.86;font-variant-numeric:tabular-nums}
+  #keylab{color:var(--muted);font-size:clamp(12px,1.7vmin,20px);margin-top:.5em}
+  main{position:relative;min-height:0}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #dom{position:absolute;inset:0;overflow:hidden;display:none}
+  footer{display:flex;justify-content:space-between;gap:24px;color:var(--muted);font-size:clamp(11px,1.5vmin,17px)}
+  footer b{color:var(--ink);font-weight:600}
+  #demo{display:none;width:max-content;border:2px solid var(--red);color:var(--red);font-family:var(--display);font-weight:700;
+        font-size:clamp(12px,1.8vmin,20px);padding:.2em .7em;margin:0 0 .6em}
+  #tip{position:fixed;pointer-events:none;display:none;background:#14161a;border:1px solid var(--faint);padding:8px 10px;
+       font-size:13px;line-height:1.4;max-width:320px;z-index:5}
+  #tip b{font-weight:600}
+  #empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--muted);
+         font-size:clamp(14px,2vmin,22px);line-height:1.5;padding:0 8%}
+  #empty code{color:var(--ink);font-family:Consolas,"Courier New",monospace}
+  /* verdetti */
+  .vgroup{font-family:var(--display);font-weight:600;font-size:clamp(14px,2vmin,24px);margin:0 0 .35em;color:var(--ink)}
+  .vgroup + .vrow{margin-top:0}
+  .vgroup:not(:first-child){margin-top:.9em}
+  .vrow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(90px,1fr) minmax(0,1.1fr) auto;align-items:center;gap:0 14px;
+        height:var(--rowh,26px);font-size:var(--rowf,14px);opacity:0;transform:translateX(-8px);
+        animation:in .35s ease-out forwards;animation-delay:calc(var(--i)*var(--stagger,60ms))}
+  .vrow .id{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vrow .est{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vrow svg{width:100%;height:100%;overflow:visible}
+  .vrow.vaxis{color:var(--muted)}
+  .vaxis .ax{position:relative;height:100%}
+  .vaxis .ax i{position:absolute;bottom:2px;transform:translateX(-50%);font-style:normal;font-variant-numeric:tabular-nums}
+  @media (max-aspect-ratio:1/1){.vrow{grid-template-columns:minmax(0,1.15fr) minmax(80px,1fr) auto}.vrow .est{display:none}}
+  .chip{font-family:var(--display);font-weight:700;font-size:.92em;padding:.1em .6em;border:1.5px solid var(--faint);color:var(--muted);min-width:4.2em;text-align:center}
+  .chip.pass{background:var(--red);border-color:var(--red);color:#fff}
+  @keyframes in{to{opacity:1;transform:none}}
+  /* controlli */
+  #bar{position:fixed;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px var(--pad);
+       background:#14161aee;border-top:1px solid var(--faint);transition:opacity .25s, transform .25s;z-index:4}
+  #bar.hidden{opacity:0;transform:translateY(100%);pointer-events:none}
+  #bar button,#bar select{font:inherit;font-size:13px;color:var(--ink);background:var(--strip);border:1px solid var(--faint);padding:6px 10px;border-radius:3px;max-width:230px}
+  #bar button{cursor:pointer}
+  #bar button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  #bar button:focus-visible,#bar select:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+  #bar .sep{flex:1}
+  #bar small{color:var(--muted);font-size:12px}
+  @media (prefers-reduced-motion:reduce){.vrow{animation:none;opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <header>
+    <div class="titles"><div id="demo">DEMO: numeri inventati</div><h1 id="title">NQ-ML</h1><p id="sub"></p></div>
+    <div class="key"><div id="keynum"></div><div id="keylab"></div></div>
+  </header>
+  <main>
+    <canvas id="cv" aria-label="grafico della scena"></canvas>
+    <div id="dom"></div>
+    <div id="empty"></div>
+  </main>
+  <footer><span id="src"></span><span id="upd"></span></footer>
+</div>
+<div id="tip"></div>
+<div id="bar">
+  <span id="tabs"></span>
+  <select id="selFam" aria-label="famiglia"></select>
+  <select id="selTest" aria-label="test"></select>
+  <select id="selFig" aria-label="figura"></select>
+  <select id="selDur" aria-label="durata dell'animazione">
+    <option value="20">20 s</option><option value="40" selected>40 s</option><option value="60">60 s</option><option value="90">90 s</option>
+  </select>
+  <button id="btnPlay" type="button">Riparti</button>
+  <span class="sep"></span>
+  <small>1-5 scena, spazio riparte, H nasconde questa barra</small>
+</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = {bg:css('--bg'), ink:css('--ink'), muted:css('--muted'), faint:css('--faint'), red:css('--red'), strip:css('--strip')};
+const FONT_D = css('--display'), FONT_B = css('--body');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SCENES = [['storia','Storia'],['distribuzione','Distribuzione'],['test','Test'],['verdetti','Verdetti'],['figura','Figura']];
+const q = new URLSearchParams(location.search);
+const S = {state:null, sig:null, scene:q.get('scena')||'storia', fam:q.get('fam')||'', test:q.get('id')||'', fig:q.get('fig')||'',
+           dur:+(q.get('dur')||40), t0:performance.now(), hover:null, hit:[]};
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, raf = 0;
+
+/* ---------- formati ---------- */
+const nf = (x, d=0) => x==null ? 'n.d.' : x.toLocaleString('it-IT', {minimumFractionDigits:d, maximumFractionDigits:d, useGrouping:'always'});
+function sig(x){ if(x==null) return 'n.d.'; const a=Math.abs(x); return nf(x, a>=100?0 : a>=10?1 : a>=1?2 : a>=0.1?3 : 4); }
+const pfmt = p => p==null ? 'n.d.' : (p < 1e-4 ? '< 0,0001' : nf(p, p<0.01?4:3));
+const pct = x => nf(100*x, 1) + '\u00a0%';
+const ease = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- canvas ---------- */
+function fit(){
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  W = r.width; H = r.height; cv.width = Math.round(W*d); cv.height = Math.round(H*d); ctx.setTransform(d,0,0,d,0,0);
+}
+const fs = k => Math.max(11, Math.min(22, Math.min(W, H) * 0.028)) * (k||1);
+function font(px, display, weight){ ctx.font = `${weight||400} ${px}px ${display?FONT_D:FONT_B}`; }
+function ticks(a, b, n){
+  const span = (b - a) || 1, raw = span / (n||5), mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+  const step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * mag, out = [];
+  for(let v = Math.ceil(a/step - 1e-9)*step; v <= b + step*1e-9; v += step) out.push(Math.abs(v) < step*1e-9 ? 0 : v);
+  return out;
+}
+function tfmt(vals){ if(vals.length < 2) return sig; const st = Math.abs(vals[1] - vals[0]), d = Math.max(0, Math.min(4, -Math.floor(Math.log10(st) + 1e-9))); return v => nf(v, d); }
+function plate(text, x, y, color, align, bold){
+  font(fs(bold ? .9 : .82), !!bold, bold ? 700 : 400); const w = ctx.measureText(text).width, h = fs(1.25), ax = align === 'right' ? x - w : align === 'center' ? x - w/2 : x;
+  ctx.fillStyle = C.bg; ctx.globalAlpha = .82; ctx.fillRect(ax - 5, y - h + 3, w + 10, h + 3); ctx.globalAlpha = 1;
+  ctx.fillStyle = color || C.muted; ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, x, y);
+}
+function frame(m){ return {x:m.l, y:m.t, w:Math.max(10, W - m.l - m.r), h:Math.max(10, H - m.t - m.b)}; }
+function yAxis(f, y0, y1, label, fmt){
+  const sy = v => f.y + f.h - (v - y0)/(y1 - y0)*f.h;
+  font(fs(.82)); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  const tv = ticks(y0, y1, Math.max(3, Math.round(f.h/70))); fmt = fmt || tfmt(tv);
+  for(const v of tv){
+    const y = sy(v); ctx.strokeStyle = v === 0 ? C.muted : C.faint; ctx.lineWidth = 1; ctx.globalAlpha = v === 0 ? .9 : .45;
+    ctx.beginPath(); ctx.moveTo(f.x, y); ctx.lineTo(f.x + f.w, y); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.muted; ctx.fillText(fmt(v), f.x - 8, y);
+  }
+  if(label){ ctx.save(); ctx.translate(fs(.9), f.y + f.h/2); ctx.rotate(-Math.PI/2); ctx.textAlign = 'center'; ctx.fillStyle = C.muted; font(fs(.82)); ctx.fillText(label, 0, 0); ctx.restore(); }
+  return sy;
+}
+function xLabel(f, label){ if(!label) return; font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(label, f.x + f.w/2, H - 4); }
+function margins(extraB){ return {l:fs(4.3), r:fs(1.2), t:fs(1.1), b:fs(extraB||3.1)}; }
+function note(f, text, x, y, color, align){ font(fs(.82)); ctx.fillStyle = color||C.muted; ctx.textAlign = align||'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(text, x, y); }
+
+/* ---------- dati derivati ---------- */
+function points(){
+  const fam = S.fam, out = [];
+  for(const r of S.state.results) if(r.z != null && !r.control && (!fam || r.fam === fam)) out.push(r);
+  return out;
+}
+function testList(){ return S.state.results.filter(r => (!S.fam || r.fam === S.fam) && (r.mean != null || r.yearly)); }
+const tkey = r => r.fam + '|' + r.id + '|' + r.label + '|' + r.row;
+function currentTest(){
+  const list = testList(); if(!list.length) return null;
+  let r = list.find(x => tkey(x) === S.test) || list.find(x => x.id === S.test);
+  if(!r){ const withY = list.filter(x => x.yearly && x.z != null); r = (withY.length ? withY : list).slice(-1)[0]; }
+  return r;
+}
+function currentFig(){ const F = S.state.figures; return F.find(f => f.path === S.fig) || F[0] || null; }
+
+/* ---------- scene ---------- */
+const Scene = {};
+
+Scene.storia = {
+  dom:false,
+  head(p){
+    const pts = this.pts, n = Math.floor(pts.length * p), shown = n ? pts[n-1] : null, L = S.state.lab;
+    let rows = 0; if(n){ const last = pts[n-1].row, A = this.allRows; let lo = 0, hi = A.length; while(lo < hi){ const m = (lo+hi)>>1; A[m] <= last ? lo = m+1 : hi = m; } rows = p >= 1 ? A.length : lo; }
+    $('title').textContent = S.fam ? `La storia di ${S.fam}` : 'Ogni test che il lab ha guardato';
+    $('sub').textContent = 'Un punto per risultato, in ordine di esecuzione. Sopra lo zero il risultato è positivo, sotto è negativo. Dentro la fascia non si distingue dal caso.';
+    $('keynum').textContent = nf(rows); $('keylab').textContent = 'test nel registro';
+    this.counts = {n, above:this.cumA[n-1]||0, below:this.cumB[n-1]||0, val:this.cumV[n-1]||0, conf:this.cumC[n-1]||0};
+  },
+  prep(){
+    const pts = this.pts = points(); let a=0,b=0,v=0,c=0,rows=0,last=-1;
+    this.allRows = [...new Set(S.state.results.filter(r => !r.control && (!S.fam || r.fam === S.fam)).map(r => r.row))].sort((x, y) => x - y);
+    this.zmax = Math.min(S.state.lab.z_cap, Math.max(2.6, ...pts.map(r => Math.abs(r.z)))) + .45;
+    this.cumA=[];this.cumB=[];this.cumV=[];this.cumC=[];this.rowsCum=[];
+    for(const r of pts){ if(r.z>1.96)a++; if(r.z<-1.96)b++; if(r.phase==='validation')v++; if(r.phase==='confirmation')c++;
+      if(r.row!==last){rows++; last=r.row;} this.cumA.push(a);this.cumB.push(b);this.cumV.push(v);this.cumC.push(c);this.rowsCum.push(rows); }
+    return pts.length > 0;
+  },
+  draw(p){
+    const pts = this.pts, N = pts.length, n = Math.floor(N*p), cap = this.zmax, f = frame(margins(3.4));
+    const sy = yAxis(f, -cap, cap, 'z-score');
+    const sx = i => f.x + (N > 1 ? i/(N-1) : .5) * f.w;
+    ctx.fillStyle = C.ink; ctx.globalAlpha = .05; ctx.fillRect(f.x, sy(1.96), f.w, sy(-1.96)-sy(1.96)); ctx.globalAlpha = 1;
+    ctx.setLineDash([5,5]); ctx.strokeStyle = C.muted; ctx.lineWidth = 1;
+    for(const z of [1.96,-1.96]){ ctx.beginPath(); ctx.moveTo(f.x, sy(z)); ctx.lineTo(f.x+f.w, sy(z)); ctx.stroke(); }
+    ctx.setLineDash([]);
+    const tip = p < 1 ? Math.max(30, N*0.012) : 0, rad = N < 60 ? 5 : N < 400 ? 3.4 : N < 1500 ? 2.4 : Math.max(1.3, Math.min(2.4, f.w/900)); S.hit = [];
+    for(let i = 0; i < n; i++){
+      const r = pts[i]; if(r.phase !== 'discovery') continue;
+      const x = sx(i), y = sy(r.z), fresh = tip && i > n - tip;
+      ctx.globalAlpha = fresh ? .95 : (N < 400 ? .8 : .42); ctx.fillStyle = fresh ? C.red : C.ink;
+      ctx.beginPath(); ctx.arc(x, y, fresh ? rad*1.5 : rad, 0, 6.2832); ctx.fill(); S.hit.push([x, y, r]);
+    }
+    ctx.globalAlpha = 1;
+    for(let i = 0; i < n; i++){
+      const r = pts[i]; if(r.phase === 'discovery') continue;
+      const x = sx(i), y = sy(r.z), conf = r.phase === 'confirmation', R = Math.max(4.5, rad*3.2);
+      ctx.lineWidth = 2; ctx.strokeStyle = C.bg; ctx.fillStyle = conf ? C.red : C.bg;
+      ctx.beginPath(); ctx.arc(x, y, R+2, 0, 6.2832); ctx.fillStyle = C.bg; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, R, 0, 6.2832);
+      if(conf){ ctx.fillStyle = C.red; ctx.fill(); } else { ctx.strokeStyle = C.ink; ctx.stroke(); }
+      S.hit.push([x, y, r]);
+    }
+    /* legenda con forme, non solo colore */
+    const k = this.counts || {}, ly = f.y + fs(.9); let lx = f.x + f.w; font(fs(.85)); ctx.textBaseline = 'middle';
+    const item = (txt, drawMark) => { font(fs(.85)); const w = ctx.measureText(txt).width; ctx.fillStyle = C.bg; ctx.globalAlpha = .82; ctx.fillRect(lx - w - 24, ly - fs(.75), w + 30, fs(1.5)); ctx.globalAlpha = 1; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = C.ink; ctx.fillText(txt, lx, ly); lx -= w + 10; drawMark(lx); lx -= 26; };
+    item(`confirmation ${nf(k.conf||0)}`, x => { ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(x, ly, 5, 0, 6.2832); ctx.fill(); });
+    item(`validation ${nf(k.val||0)}`, x => { ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, ly, 5, 0, 6.2832); ctx.stroke(); });
+    plate('fascia del caso, |z| < 1,96', f.x + 10, sy(1.96) + fs(1.45), C.ink);
+    plate(`sopra la fascia ${nf(k.above||0)}`, f.x + f.w - 10, sy(1.96) - 9, C.ink, 'right');
+    plate(`sotto la fascia ${nf(k.below||0)}`, f.x + f.w - 10, sy(-1.96) + fs(1.2), C.ink, 'right');
+    if(this.zmax > 4) plate('righe di punti in alto e in basso: limite del bootstrap', f.x + 10, f.y + f.h - 8);
+    font(fs(.82)); ctx.fillStyle = C.muted; ctx.textBaseline = 'alphabetic';
+    if(N){ ctx.textAlign = 'left'; ctx.fillText(dateIt(pts[0].ts), f.x, f.y + f.h + fs(1.3)); ctx.textAlign = 'right'; ctx.fillText(dateIt(pts[Math.max(0,n-1)].ts), sx(Math.max(0,n-1)) < f.x + 120 ? f.x + f.w : Math.max(f.x + 150, sx(n-1)), f.y + f.h + fs(1.3)); }
+    xLabel(f, 'ordine di esecuzione');
+  },
+  tip(r){ return `<b>${esc(r.fam)} / ${esc(r.id)}${r.label?' ('+esc(r.label)+')':''}</b><br>z-score ${nf(r.z,2)}, media ${sig(r.mean)}, n ${nf(r.n)}<br>${esc(r.phase)}`; }
+};
+function dateIt(ts){ const d = new Date(ts); return isNaN(d) ? '' : d.toLocaleDateString('it-IT', {day:'numeric', month:'short', year:'numeric'}); }
+
+Scene.distribuzione = {
+  dom:false,
+  prep(){
+    const pts = points(), cap = S.state.lab.z_cap, bw = .25, nb = Math.round(2*cap/bw); this.bins = new Array(nb).fill(0); this.bw = bw; this.cap = cap;
+    let sum = 0, a = 0, b = 0; for(const r of pts){ this.bins[Math.min(nb-1, Math.max(0, Math.floor((r.z + cap)/bw)))]++; sum += r.z; if(r.z > 1.96) a++; if(r.z < -1.96) b++; }
+    this.n = pts.length; this.mean = pts.length ? sum/pts.length : 0; this.above = a; this.below = b; return pts.length > 0;
+  },
+  head(){
+    $('title').textContent = S.fam ? `Dove cadono i risultati di ${S.fam}` : 'Dove cadono i risultati';
+    $('sub').textContent = `${nf(this.n)} risultati con p-value. La curva tratteggiata è quello che si vedrebbe con edge zero e senza costi.`;
+    $('keynum').textContent = nf(this.mean, 2); $('keylab').textContent = 'z-score medio';
+  },
+  draw(p){
+    const f = frame(margins(3.4)), cap = this.cap, bw = this.bw, e = ease(p*1.6), nb = this.bins.length;
+    const pdf = z => Math.exp(-z*z/2)/Math.sqrt(2*Math.PI) * this.n * bw;
+    const ymax = Math.max(Math.max(...this.bins), pdf(0)) * 1.08, sy = yAxis(f, 0, ymax, 'risultati per classe', v => nf(v, 0));
+    const sx = z => f.x + (z + cap)/(2*cap) * f.w; S.hit = [];
+    ctx.fillStyle = C.ink; ctx.globalAlpha = .05; ctx.fillRect(sx(-1.96), f.y, sx(1.96)-sx(-1.96), f.h); ctx.globalAlpha = 1;
+    const bwPx = f.w/nb;
+    for(let i = 0; i < nb; i++){
+      const h = (f.y + f.h - sy(this.bins[i])) * e; if(h <= 0) continue;
+      ctx.fillStyle = C.ink; ctx.globalAlpha = .82; ctx.fillRect(f.x + i*bwPx + 1, f.y + f.h - h, Math.max(1, bwPx - 2), h); ctx.globalAlpha = 1;
+      S.hit.push([f.x + (i+.5)*bwPx, f.y + f.h - h/2, {bin:i, lo:-cap + i*bw, n:this.bins[i]}]);
+    }
+    ctx.setLineDash([6,5]); ctx.strokeStyle = C.muted; ctx.lineWidth = 2; ctx.beginPath();
+    for(let z = -cap; z <= cap; z += .05){ const x = sx(z), y = sy(pdf(z)); z === -cap ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.stroke(); ctx.setLineDash([]);
+    note(f, 'edge zero, senza costi', sx(1.15), sy(pdf(1.15)) - 8);
+    const mx = sx(this.mean); ctx.strokeStyle = C.red; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mx, f.y); ctx.lineTo(mx, f.y + f.h); ctx.stroke();
+    font(fs(.9), true, 700); ctx.fillStyle = C.red; ctx.textAlign = mx > f.x + f.w/2 ? 'right' : 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(`media reale ${nf(this.mean, 2)}`, mx + (mx > f.x + f.w/2 ? -8 : 8), f.y + 2);
+    font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    for(const z of [-4,-2,0,2,4]) ctx.fillText(nf(z,0), sx(z), f.y + f.h + fs(1.3));
+    plate(`sotto la fascia ${pct(this.below/this.n)}`, f.x + 10, f.y + fs(1.1), C.ink);
+    plate(`sopra la fascia ${pct(this.above/this.n)}`, f.x + f.w - 10, f.y + fs(1.1), C.ink, 'right');
+    plate('le colonne isolate ai lati sono il limite del bootstrap, 10.000 repliche', f.x + 10, f.y + fs(2.6));
+    xLabel(f, 'z-score');
+  },
+  tip(d){ return `<b>z da ${nf(d.lo,2)} a ${nf(d.lo+this.bw,2)}</b><br>${nf(d.n)} risultati`; }
+};
+
+Scene.test = {
+  dom:false,
+  prep(){ this.r = currentTest(); return !!this.r; },
+  head(){
+    const r = this.r;
+    $('title').textContent = `${r.fam} / ${r.id}${r.label ? ' (' + r.label + ')' : ''}`;
+    $('sub').textContent = r.desc || '';
+    $('keynum').textContent = sig(r.mean); $('keylab').textContent = r.unit || (r.is_coef ? 'coefficiente della regressione' : r.stat === 'diff' ? 'differenza registrata' : 'media registrata');
+  },
+  draw(p){
+    const r = this.r, hasCI = r.lo != null && r.hi != null && r.mean != null, yrs = r.yearly ? Object.keys(r.yearly).sort() : [];
+    const m = margins(2.4), top = yrs.length ? fs(1.2) : Math.max(fs(1.2), H*.24), stripH = hasCI ? Math.min(fs(6.5), H*.26) : 0, e = ease(p*2.2); S.hit = [];
+    font(fs(.9)); ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    const facts = [`n ${nf(r.n)}`, r.p != null ? `p-value ${pfmt(r.p)}${r.p_kind==='one'?' (one-sided)':''}` : null, r.z != null ? `z-score ${nf(r.z,2)}` : null,
+                   r.years_pos ? `anni positivi ${r.years_pos}` : null, r.gross != null ? `lordo ${sig(r.gross)}` : null, r.phase].filter(Boolean);
+    ctx.fillText(facts.join('     '), 0, 0);
+    if(hasCI){
+      const a = Math.min(r.lo, 0), b = Math.max(r.hi, 0), padv = (b - a)*.12 || 1, x0 = a - padv, x1 = b + padv;
+      const sx = v => m.l + (v - x0)/(x1 - x0) * (W - m.l - m.r), y = top + fs(1.6) + stripH*.38;
+      ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(W - m.r, y); ctx.stroke();
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      const tv = ticks(x0, x1, Math.max(4, Math.round(W/170))), tf = tfmt(tv); for(const v of tv){ ctx.beginPath(); ctx.moveTo(sx(v), y - 4); ctx.lineTo(sx(v), y + 4); ctx.stroke(); ctx.fillText(tf(v), sx(v), y + fs(1.25)); }
+      ctx.strokeStyle = C.muted; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(sx(0), y - stripH*.36); ctx.lineTo(sx(0), y + stripH*.2); ctx.stroke(); ctx.setLineDash([]);
+      note(null, 'zero', sx(0) + 6, y - stripH*.36 + fs(.8));
+      const cx = sx(r.mean), l = cx + (sx(r.lo) - cx)*e, h = cx + (sx(r.hi) - cx)*e;
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(l, y); ctx.lineTo(h, y); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(cx, y, 10, 0, 6.2832); ctx.fill(); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(cx, y, 7, 0, 6.2832); ctx.fill();
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(`intervallo 95\u00a0%: da ${sig(r.lo)} a ${sig(r.hi)}`, Math.min(W - m.r - 150, Math.max(m.l + 150, cx)), y - 16);
+    }
+    if(yrs.length){
+      const f = {x:m.l, y:top + fs(1.6) + stripH + fs(1.5), w:W - m.l - m.r, h:0}; f.h = Math.max(40, H - f.y - m.b);
+      const vals = yrs.map(k => r.yearly[k]), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals), padv = (hi - lo)*.1 || 1;
+      const sy = yAxis(f, lo - (lo < 0 ? padv : 0), hi + (hi > 0 ? padv : 0), 'media per anno'), slot = f.w/yrs.length, bw = Math.min(24, slot*.6);
+      yrs.forEach((k, i) => {
+        const t = ease((p*2.6 - .5) * 1.4 - i/yrs.length), v = vals[i], x = f.x + (i+.5)*slot, y0 = sy(0), y1 = y0 + (sy(v) - y0)*t;
+        if(t > 0){ ctx.fillStyle = C.ink; ctx.globalAlpha = .88; bar(x - bw/2, y0, bw, y1 - y0); ctx.globalAlpha = 1; }
+        font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(slot < 46 ? k.slice(2) : k, x, f.y + f.h + fs(1.3));
+        S.hit.push([x, (y0 + sy(v))/2, {year:k, v}]);
+      });
+    } else if(!hasCI && r.z != null){
+      /* nessun intervallo e nessun anno: si mostra dove cade lo z-score rispetto alla fascia del caso */
+      const zm = Math.max(4.2, Math.abs(r.z) + .6), y = top + fs(4) + Math.min(H*.2, fs(8)), sx = v => m.l + (v + zm)/(2*zm) * (W - m.l - m.r), hh = Math.min(H*.16, fs(6));
+      ctx.fillStyle = C.ink; ctx.globalAlpha = .06; ctx.fillRect(sx(-1.96), y - hh, sx(1.96) - sx(-1.96), 2*hh); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.faint; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(W - m.r, y); ctx.stroke();
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      for(let v = -Math.floor(zm); v <= zm; v++){ ctx.beginPath(); ctx.moveTo(sx(v), y - 4); ctx.lineTo(sx(v), y + 4); ctx.stroke(); ctx.fillText(nf(v, 0), sx(v), y + hh + 8); }
+      plate('fascia del caso, |z| < 1,96', sx(0), y - hh - 8, C.muted, 'center');
+      const cx = sx(0) + (sx(r.z) - sx(0)) * e; ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(cx, y, 12, 0, 6.2832); ctx.fill(); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(cx, y, 8, 0, 6.2832); ctx.fill();
+      font(fs(.95), true, 700); ctx.fillStyle = C.red; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; if(e >= 1) ctx.fillText(`z-score ${nf(r.z, 2)}`, cx, y - 16);
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('z-score', (m.l + W - m.r)/2, y + hh + 8 + fs(1.5));
+    } else if(!hasCI){
+      wrap('Questo test ha registrato solo un valore: nessun p-value, nessun intervallo e nessun dettaglio per anno.', W/2, H*.4, Math.min(W*.8, 620));
+    }
+  },
+  tip(d){ return `<b>${esc(d.year)}</b><br>${sig(d.v)}`; }
+};
+function wrap(text, x, y, maxW){
+  font(fs(1)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; let line = '', yy = y;
+  for(const w of text.split(' ')){ if(ctx.measureText(line + w).width > maxW && line){ ctx.fillText(line.trim(), x, yy); yy += fs(1.5); line = ''; } line += w + ' '; }
+  ctx.fillText(line.trim(), x, yy);
+}
+/* barra con estremità arrotondata dal lato del dato, ancorata alla base */
+function bar(x, y0, w, h){
+  const r = Math.min(4, Math.abs(h), w/2), y1 = y0 + h, s = h < 0 ? -1 : 1; ctx.beginPath();
+  ctx.moveTo(x, y0); ctx.lineTo(x, y1 - s*r); ctx.quadraticCurveTo(x, y1, x + r, y1); ctx.lineTo(x + w - r, y1); ctx.quadraticCurveTo(x + w, y1, x + w, y1 - s*r); ctx.lineTo(x + w, y0); ctx.closePath(); ctx.fill();
+}
+
+Scene.verdetti = {
+  dom:true,
+  prep(){ this.v = S.state.verdicts.filter(v => !S.fam || v.fam === S.fam); return this.v.length > 0; },
+  head(){
+    const pass = this.v.filter(v => v.verdict === 'PASS').length, conf = this.v.filter(v => v.phase === 'confirmation');
+    $('title').textContent = 'I candidati arrivati al giudizio';
+    const cp = conf.filter(v => v.verdict === 'PASS'), ct = cp.filter(v => v.kind === 'tradeable').length;
+    $('sub').textContent = `Prima la validation, poi la confirmation su dati mai visti. La barra è l'intervallo al 95\u00a0%, la tacca grigia è la soglia dopo la correzione per i test multipli. Scala: errori standard dallo zero.` + (conf.length ? ` Confirmation: ${cp.length} PASS su ${conf.length}, di cui tradeable ${ct}.` : '');
+    $('keynum').textContent = `${pass}/${this.v.length}`; $('keylab').textContent = 'PASS sui verdetti';
+  },
+  render(){
+    const el = $('dom'), groups = [['validation','Validation'],['confirmation','Confirmation']], n = this.v.length + groups.length + 1;
+    const rowh = Math.max(15, Math.min(34, el.clientHeight / (n + 1.6))); el.style.setProperty('--rowh', rowh + 'px'); el.style.setProperty('--rowf', Math.max(10.5, rowh*.5) + 'px');
+    el.style.setProperty('--stagger', (REDUCED ? 0 : Math.min(120, S.dur*1000*.5/this.v.length)) + 'ms');
+    /* scala comune: distanza dallo zero in errori standard, così lo zero è allineato su tutte le righe */
+    const ok = this.v.filter(v => v.se > 0), d0 = Math.min(-3.5, ...ok.map(v => v.lo/v.se)) - .6, d1 = Math.max(3.5, ...ok.map(v => v.hi/v.se)) + .6;
+    const z0 = (100*(0 - d0)/(d1 - d0)).toFixed(2), tv = ticks(d0, d1, 5);
+    let i = 0, html = `<div class="vrow vaxis"><span></span><span class="ax">${tv.map(t => `<i style="left:${(100*(t - d0)/(d1 - d0)).toFixed(2)}%">${nf(t, 0)}</i>`).join('')}</span><span class="est"></span><span class="chip" style="visibility:hidden">FAIL</span></div>`;
+    for(const [ph, name] of groups){
+      const rows = this.v.filter(v => v.phase === ph); if(!rows.length) continue;
+      html += `<p class="vgroup" style="font-size:${Math.max(12, rowh*.62)}px">${name}</p>`;
+      for(const v of rows){
+        const sx = x => (100*(x/v.se - d0)/(d1 - d0)).toFixed(2), thr = v.zc == null ? [] : [v.kind === 'regularity' && v.mean < 0 ? -v.zc : v.zc];
+        html += `<div class="vrow" style="--i:${i++}" title="${esc(v.id)}: alpha ${pfmt(v.alpha)}, K ${v.k}, MDE80 ${sig(v.mde80)}">
+          <span class="id">${esc(v.id)}</span>
+          <svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="${z0}" x2="${z0}" y1="0" y2="10" stroke="${C.muted}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+            ${thr.map(t => `<line x1="${(100*(t - d0)/(d1 - d0)).toFixed(2)}" x2="${(100*(t - d0)/(d1 - d0)).toFixed(2)}" y1="3" y2="7" stroke="${C.muted}" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}
+            <line x1="${sx(v.lo)}" x2="${sx(v.hi)}" y1="5" y2="5" stroke="${C.ink}" stroke-width="3" vector-effect="non-scaling-stroke"/>
+            <line x1="${sx(v.mean)}" x2="${sx(v.mean)}" y1="1.5" y2="8.5" stroke="${C.ink}" stroke-width="5" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <span class="est">${sig(v.mean)} [${sig(v.lo)}; ${sig(v.hi)}], ${v.kind==='tradeable'?'tradeable':'regularity'}</span>
+          <span class="chip ${v.verdict==='PASS'?'pass':''}">${v.verdict==='PASS'?'PASS':esc(v.verdict)}</span></div>`;
+      }
+    }
+    el.innerHTML = html;
+  }
+};
+
+Scene.figura = {
+  dom:false,
+  prep(){ this.f = currentFig(); return !!this.f; },
+  head(){
+    const g = this.f; $('title').textContent = g.title; $('sub').textContent = `${g.family} / ${g.test_id}${g.note ? '. ' + g.note : ''}`;
+    let k = '', l = '';
+    if(g.type === 'placebo'){ k = pct(g.share_as_extreme); l = 'placebo che fanno almeno quanto il reale'; }
+    else if(g.marker && g.marker.label){ k = sig(g.marker.x); l = g.marker.label; }
+    $('keynum').textContent = k; $('keylab').textContent = l;
+  },
+  draw(p){
+    const g = this.f, f = frame(margins(3.4)), e = ease(p*1.8); S.hit = [];
+    if(g.type === 'bars'){
+      const v = g.values.map(x => x == null ? 0 : x), all = v.concat(g.lo||[], g.hi||[]).filter(x => x != null), lo = Math.min(0, ...all), hi = Math.max(0, ...all), pad = (hi-lo)*.1 || 1;
+      const sy = yAxis(f, lo - (lo<0?pad:0), hi + (hi>0?pad:0), g.ylabel), slot = f.w/v.length, bw = Math.min(24, slot*.6);
+      v.forEach((val, i) => { const t = ease(p*2.4 - i/v.length), x = f.x + (i+.5)*slot, y0 = sy(0);
+        if(t > 0){ ctx.fillStyle = C.ink; ctx.globalAlpha = .88; bar(x - bw/2, y0, bw, (sy(val) - y0)*t); ctx.globalAlpha = 1; }
+        if(g.lo && g.hi && g.lo[i] != null && t >= 1){ ctx.strokeStyle = C.muted; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, sy(g.lo[i])); ctx.lineTo(x, sy(g.hi[i])); ctx.stroke(); }
+        font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        if(v.length <= 24 || i % Math.ceil(v.length/12) === 0) ctx.fillText(g.labels[i], x, f.y + f.h + fs(1.3));
+        S.hit.push([x, (y0 + sy(val))/2, {k:g.labels[i], v:g.values[i]}]); });
+    } else if(g.type === 'line'){
+      const ys = g.series.flatMap(s => s.y).filter(x => x != null), lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi-lo)*.08 || 1, n = g.x.length;
+      const sy = yAxis(f, lo - pad, hi + pad, g.ylabel), xn = g.x_numeric, x0 = xn ? Math.min(...g.x) : 0, x1 = xn ? Math.max(...g.x) : n - 1;
+      const sx = i => f.x + ((xn ? g.x[i] : i) - x0)/((x1 - x0) || 1) * f.w, clipW = f.w * e + 6;
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      if(xn){ const tv = ticks(x0, x1, Math.max(4, Math.round(f.w/150))), tf = tfmt(tv); for(const v of tv) ctx.fillText(tf(v), f.x + (v - x0)/((x1 - x0)||1)*f.w, f.y + f.h + fs(1.3)); }
+      else g.x.forEach((lab, i) => { if(n <= 16 || i % Math.ceil(n/10) === 0) ctx.fillText(lab, sx(i), f.y + f.h + fs(1.3)); });
+      ctx.save(); ctx.beginPath(); ctx.rect(f.x - 6, 0, clipW, H); ctx.clip();
+      const dashes = [[], [7,5], [2,4], [10,4,2,4]];
+      g.series.forEach((s, k) => { ctx.strokeStyle = k === 0 ? C.ink : C.muted; ctx.lineWidth = 2; ctx.setLineDash(dashes[k % 4]); ctx.lineJoin = 'round'; ctx.beginPath(); let pen = false;
+        s.y.forEach((v, i) => { if(v == null){ pen = false; return; } pen ? ctx.lineTo(sx(i), sy(v)) : ctx.moveTo(sx(i), sy(v)); pen = true; if(k === 0 || g.series.length > 1) S.hit.push([sx(i), sy(v), {k:(xn?sig(g.x[i]):g.x[i]), v, s:s.name}]); });
+        ctx.stroke(); ctx.setLineDash([]);
+        const li = s.y.length - 1; if(g.series.length > 1 && s.y[li] != null){ font(fs(.82)); ctx.fillStyle = C.ink; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(s.name, sx(li), sy(s.y[li]) - 6 - k*fs(1)); } });
+      ctx.restore();
+      if(g.marker && xn && e >= 1){ const mx = f.x + (g.marker.x - x0)/((x1 - x0)||1)*f.w, my = sy(g.marker.y);
+        ctx.strokeStyle = C.red; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(mx, f.y + f.h); ctx.lineTo(mx, my); ctx.lineTo(f.x, my); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = C.bg; ctx.beginPath(); ctx.arc(mx, my, 9, 0, 6.2832); ctx.fill(); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(mx, my, 6, 0, 6.2832); ctx.fill();
+        font(fs(.95), true, 700); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(`${g.marker.label || ''} ${sig(g.marker.x)}`, mx + 16, my - 10); }
+    } else if(g.type === 'scatter'){
+      const xs = g.x.filter(v => v != null), ys = g.y.filter(v => v != null), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), py = (y1-y0)*.06 || 1, px = (x1-x0)*.04 || 1;
+      const sy = yAxis(f, y0 - py, y1 + py, g.ylabel), sx = v => f.x + (v - (x0 - px))/((x1 - x0 + 2*px)) * f.w, n = Math.floor(g.x.length * e);
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      { const tv = ticks(x0, x1, Math.max(4, Math.round(f.w/150))), tf = tfmt(tv); for(const v of tv) ctx.fillText(tf(v), sx(v), f.y + f.h + fs(1.3)); }
+      ctx.fillStyle = C.ink; ctx.globalAlpha = .55;
+      for(let i = 0; i < n; i++){ if(g.x[i] == null || g.y[i] == null) continue; ctx.beginPath(); ctx.arc(sx(g.x[i]), sy(g.y[i]), 3.2, 0, 6.2832); ctx.fill(); S.hit.push([sx(g.x[i]), sy(g.y[i]), {k:sig(g.x[i]), v:g.y[i]}]); }
+      ctx.globalAlpha = 1;
+    } else { /* hist e placebo */
+      const ed = g.edges, cnt = g.counts, x0 = ed[0], x1 = ed[ed.length-1], sy = yAxis(f, 0, Math.max(...cnt)*1.1 || 1, g.type === 'placebo' ? 'placebo per classe' : 'osservazioni per classe', v => nf(v, 0));
+      const sx = v => f.x + (v - x0)/((x1 - x0) || 1) * f.w, isP = g.type === 'placebo';
+      font(fs(.82)); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      { const tv = ticks(x0, x1, Math.max(4, Math.round(f.w/150))), tf = tfmt(tv); for(const v of tv) ctx.fillText(tf(v), sx(v), f.y + f.h + fs(1.3)); }
+      cnt.forEach((c, i) => { const h = (f.y + f.h - sy(c)) * e, xa = sx(ed[i]), xb = sx(ed[i+1]); if(h <= 0) return;
+        ctx.fillStyle = isP ? C.muted : C.ink; ctx.globalAlpha = isP ? .7 : .85; ctx.fillRect(xa + 1, f.y + f.h - h, Math.max(1, xb - xa - 2), h); ctx.globalAlpha = 1;
+        S.hit.push([(xa + xb)/2, f.y + f.h - h/2, {k:`da ${sig(ed[i])} a ${sig(ed[i+1])}`, v:c}]); });
+      if(isP){ const t = ease(p*1.8 - .8), mx = sx(g.real); if(t > 0){
+        ctx.strokeStyle = C.red; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(mx, f.y + f.h); ctx.lineTo(mx, f.y + f.h - f.h*t); ctx.stroke();
+        if(t >= 1){ font(fs(1), true, 700); ctx.fillStyle = C.red; ctx.textAlign = mx > f.x + f.w*.7 ? 'right' : 'left'; ctx.textBaseline = 'top'; ctx.fillText(`${g.real_label} ${sig(g.real)}`, mx + (mx > f.x + f.w*.7 ? -10 : 10), f.y + 2); } }
+        note(f, `${nf(g.n)} placebo`, f.x + 8, f.y + fs(1)); }
+    }
+    xLabel(f, g.xlabel);
+  },
+  tip(d){ return `<b>${esc(d.s ? d.s + ', ' : '')}${esc(d.k)}</b><br>${sig(d.v)}`; }
+};
+
+/* ---------- ciclo ---------- */
+function showEmpty(html){ $('empty').innerHTML = '<p>' + html + '</p>'; $('empty').style.display = 'flex'; cv.style.display = 'none'; $('dom').style.display = 'none'; $('keynum').textContent = ''; $('keylab').textContent = ''; }
+const EMPTY = {
+  storia:'Il registro è vuoto. I punti compaiono quando un test chiama <code>core.record</code>.',
+  distribuzione:'Nessun risultato con p-value da mostrare per questa scelta.',
+  test:'Nessun test con una media registrata per questa famiglia.',
+  verdetti:'Nessun verdetto in <code>lab/verdicts</code> per questa scelta.',
+  figura:'Nessuna figura salvata. Un test salva un grafico con <code>lab.viz</code> (istruzioni in <code>lab/viz.py</code>). Per vedere un esempio: <code>python -m lab.dashboard.demo</code> e poi <code>python -m lab.dashboard --demo</code>.'
+};
+function start(restart){
+  cancelAnimationFrame(raf); if(!S.state) return;
+  const sc = Scene[S.scene] || Scene.storia; S.hit = []; hideTip();
+  $('demo').style.display = 'none';
+  if(!sc.prep()){ $('title').textContent = SCENES.find(s => s[0] === S.scene)[1]; $('sub').textContent = ''; showEmpty(EMPTY[S.scene]); return; }
+  $('empty').style.display = 'none'; cv.style.display = sc.dom ? 'none' : 'block'; $('dom').style.display = sc.dom ? 'block' : 'none';
+  if(S.scene === 'figura' && sc.f.demo) $('demo').style.display = 'block';
+  if(restart) S.t0 = performance.now();
+  if(sc.dom){ sc.head(1); sc.render(); return; }
+  fit(); loop();
+}
+function progress(){ if(REDUCED) return 1; const d = S.scene === 'storia' ? S.dur : Math.min(S.dur, 6); return Math.min(1, (performance.now() - S.t0)/(d*1000)); }
+function loop(){
+  const sc = Scene[S.scene], p = progress();
+  ctx.clearRect(0, 0, W, H); sc.head(p); sc.draw(p);
+  if(p < 1) raf = requestAnimationFrame(loop);
+}
+function redraw(){ const sc = Scene[S.scene]; if(!S.state || !sc) return; if(sc.dom){ if($('dom').style.display === 'block') sc.render(); return; } if(cv.style.display === 'none') return; fit(); cancelAnimationFrame(raf); loop(); }
+
+/* ---------- hover ---------- */
+function hideTip(){ $('tip').style.display = 'none'; }
+cv.addEventListener('mousemove', ev => {
+  const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top; let best = null, bd = 18*18;
+  for(const h of S.hit){ const d = (h[0]-x)*(h[0]-x) + (h[1]-y)*(h[1]-y); if(d < bd){ bd = d; best = h; } }
+  const sc = Scene[S.scene]; if(!best || !sc.tip){ hideTip(); return; }
+  const t = $('tip'); t.innerHTML = sc.tip(best[2]); t.style.display = 'block';
+  t.style.left = Math.min(innerWidth - t.offsetWidth - 8, ev.clientX + 14) + 'px'; t.style.top = Math.max(8, ev.clientY - t.offsetHeight - 10) + 'px';
+});
+cv.addEventListener('mouseleave', hideTip);
+
+/* ---------- controlli ---------- */
+function setScene(s){ S.scene = s; syncUI(); start(true); }
+function syncUI(){
+  for(const b of $('tabs').children) b.setAttribute('aria-pressed', b.dataset.s === S.scene);
+  $('selTest').style.display = S.scene === 'test' ? '' : 'none'; $('selFig').style.display = S.scene === 'figura' ? '' : 'none';
+  $('selFam').style.display = S.scene === 'figura' ? 'none' : ''; $('selDur').style.display = S.scene === 'storia' ? '' : 'none';
+  const u = new URLSearchParams(); u.set('scena', S.scene); if(S.fam) u.set('fam', S.fam); if(S.scene === 'test' && S.test) u.set('id', S.test);
+  if(S.scene === 'figura' && S.fig) u.set('fig', S.fig); if(S.dur !== 40) u.set('dur', S.dur); if(q.get('ui') === '0') u.set('ui', '0');
+  history.replaceState(null, '', '?' + u.toString());
+}
+function fillSelects(){
+  const fam = $('selFam'), keep = S.fam; fam.innerHTML = '<option value="">tutte le famiglie</option>' + S.state.lab.families.map(([n, c]) => `<option value="${esc(n)}">${esc(n)} (${nf(c)})</option>`).join('');
+  fam.value = keep; if(fam.value !== keep) S.fam = '';
+  fillTests();
+  const fg = $('selFig'); fg.innerHTML = S.state.figures.map(f => `<option value="${esc(f.path)}">${esc(f.family)} / ${esc(f.test_id)}: ${esc(f.name)}</option>`).join('') || '<option value="">nessuna figura</option>';
+  if(S.fig) fg.value = S.fig;
+}
+function fillTests(){
+  const list = testList().slice(-600).reverse(), cur = currentTest();
+  $('selTest').innerHTML = list.map(r => `<option value="${esc(tkey(r))}">${esc((S.fam ? '' : r.fam + ' / ') + r.id + (r.label ? ' (' + r.label + ')' : ''))}</option>`).join('');
+  if(cur) $('selTest').value = tkey(cur);
+}
+$('tabs').innerHTML = SCENES.map(([s, n], i) => `<button type="button" data-s="${s}" title="tasto ${i+1}">${n}</button>`).join(' ');
+$('tabs').addEventListener('click', e => { if(e.target.dataset.s) setScene(e.target.dataset.s); });
+$('selFam').addEventListener('change', e => { S.fam = e.target.value; S.test = ''; fillTests(); syncUI(); start(true); });
+$('selTest').addEventListener('change', e => { S.test = e.target.value; syncUI(); start(true); });
+$('selFig').addEventListener('change', e => { S.fig = e.target.value; syncUI(); start(true); });
+$('selDur').addEventListener('change', e => { S.dur = +e.target.value; syncUI(); start(true); });
+$('btnPlay').addEventListener('click', () => start(true));
+$('selDur').value = String(S.dur);
+let pinnedHidden = q.get('ui') === '0', idle = 0;
+function wake(){ if(pinnedHidden) return; $('bar').classList.remove('hidden'); clearTimeout(idle); idle = setTimeout(() => { if(!$('bar').matches(':hover') && !$('bar').contains(document.activeElement)) $('bar').classList.add('hidden'); }, 3000); }
+addEventListener('mousemove', wake);
+addEventListener('keydown', e => {
+  if(e.target.tagName === 'SELECT') return;
+  if(e.key >= '1' && e.key <= '5'){ setScene(SCENES[+e.key - 1][0]); }
+  else if(e.key === ' '){ e.preventDefault(); start(true); }
+  else if(e.key === 'h' || e.key === 'H'){ pinnedHidden = !pinnedHidden; $('bar').classList.toggle('hidden', pinnedHidden); if(!pinnedHidden) wake(); }
+});
+let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(redraw, 80); });
+
+/* ---------- dati ---------- */
+async function load(first){
+  try{
+    const r = await fetch('/api/state', {cache:'no-store'}); if(!r.ok) throw new Error(r.status);
+    S.state = await r.json(); S.sig = S.state.sig; fillSelects(); syncUI();
+    const L = S.state.lab;
+    $('src').innerHTML = `<b>NQ-ML</b>&ensp;registro del laboratorio&ensp;${nf(L.rows)} test in ${L.families.length} famiglie` + (L.controls ? `&ensp;più ${nf(L.controls)} righe di controllo` : '');
+    $('upd').textContent = 'aggiornato alle ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+    first ? start(true) : (Scene[S.scene].dom ? start(false) : (Scene[S.scene].prep() ? redraw() : start(false)));
+  }catch(err){
+    if(first){ $('title').textContent = 'Il server della dashboard non risponde'; showEmpty('Avvialo dalla cartella del repo con <code>python -m lab.dashboard</code>, poi ricarica questa pagina.'); }
+  }
+}
+async function poll(){ try{ const r = await fetch('/api/sig', {cache:'no-store'}); const j = await r.json(); if(j.sig !== S.sig) await load(!S.state); }catch(e){} }
+if(pinnedHidden) $('bar').classList.add('hidden'); else wake();
+load(true); setInterval(poll, 4000);
+</script>
+</body>
+</html>
